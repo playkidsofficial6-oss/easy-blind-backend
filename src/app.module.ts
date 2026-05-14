@@ -1,0 +1,21 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
+import { JobsModule } from './jobs/jobs.module';
+import { validateEnvironment } from './config/env.validation';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env'],
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
+      validate: validateEnvironment,
+    }),
+    DatabaseModule,
+    HealthModule,
+    JobsModule,
+  ],
+})
+export class AppModule {}
