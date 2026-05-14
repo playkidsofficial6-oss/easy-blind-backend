@@ -33,9 +33,9 @@ export function validateEnvironment(env: Environment) {
     PORT: optionalNumber(env, 'PORT', 4000),
     API_PREFIX: env.API_PREFIX ?? 'api',
     CORS_ORIGIN: env.CORS_ORIGIN ?? '*',
-    MONGODB_URI: requireString(
+    MONGO_URI: requireString(
       env,
-      'MONGODB_URI',
+      'MONGO_URI',
       'mongodb://127.0.0.1:27017/easy-blinds',
     ),
   };

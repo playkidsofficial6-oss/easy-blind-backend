@@ -8,11 +8,11 @@ import { MongooseModule } from '@nestjs/mongoose';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        // TEST_MONGODB_URI is intentionally kept separate so automated tests can
+        // TEST_MONGO_URI is intentionally kept separate so automated tests can
         // use mongodb-memory-server even when a developer has a local .env file.
         uri:
-          process.env.TEST_MONGODB_URI ??
-          configService.getOrThrow<string>('MONGODB_URI'),
+          process.env.TEST_MONGO_URI ??
+          configService.getOrThrow<string>('MONGO_URI'),
         autoIndex: configService.get<string>('NODE_ENV') !== 'production',
         serverSelectionTimeoutMS: 5000,
       }),

@@ -115,10 +115,10 @@ NODE_ENV=development
 PORT=4000
 API_PREFIX=api
 CORS_ORIGIN=*
-MONGODB_URI=mongodb://127.0.0.1:27017/easy-blinds
+MONGO_URI=mongodb://127.0.0.1:27017/easy-blinds
 ```
 
-The backend validates required environment variables in `src/config/env.validation.ts`. A dedicated `TEST_MONGODB_URI` override is supported for automated tests so tests can run against `mongodb-memory-server` without changing the developer `.env` file.
+The backend validates required environment variables in `src/config/env.validation.ts`. A dedicated `TEST_MONGO_URI` override is supported for automated tests so tests can run against `mongodb-memory-server` without changing the developer `.env` file.
 
 ## API Routes
 

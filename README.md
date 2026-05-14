@@ -25,10 +25,10 @@ NODE_ENV=development
 PORT=4000
 API_PREFIX=api
 CORS_ORIGIN=*
-MONGODB_URI=mongodb://127.0.0.1:27017/easy-blinds
+MONGO_URI=mongodb://127.0.0.1:27017/easy-blinds
 ```
 
-The MongoDB connection is configured in `src/database/database.module.ts` with `MongooseModule.forRootAsync`. The application reads `MONGODB_URI` through `@nestjs/config` and fails early if the value is missing or invalid.
+The MongoDB connection is configured in `src/database/database.module.ts` with `MongooseModule.forRootAsync`. The application reads `MONGO_URI` through `@nestjs/config` and fails early if the value is missing or invalid.
 
 ## Installation
 

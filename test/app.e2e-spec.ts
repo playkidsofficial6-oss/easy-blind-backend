@@ -38,8 +38,8 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
-    process.env.TEST_MONGODB_URI = mongoServer.getUri('easy-blinds-test');
-    process.env.MONGODB_URI = process.env.TEST_MONGODB_URI;
+    process.env.TEST_MONGO_URI = mongoServer.getUri('easy-blinds-test');
+    process.env.MONGO_URI = process.env.TEST_MONGO_URI;
     process.env.API_PREFIX = 'api';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
