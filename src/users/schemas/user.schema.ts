@@ -1,6 +1,31 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
+export type LiveUserStatus =
+  | 'Available'
+  | 'On the way'
+  | 'In progress'
+  | 'Completed'
+  | 'Offline'
+  | 'Fully Booked';
+
+@Schema({ _id: false, versionKey: false })
+export class UserLocation {
+  @Prop({ required: true, type: Number })
+  lat: number;
+
+  @Prop({ required: true, type: Number })
+  lng: number;
+
+  @Prop({ trim: true, maxlength: 255 })
+  address?: string;
+
+  @Prop({ type: Date })
+  updatedAt?: Date;
+}
+
+export const UserLocationSchema = SchemaFactory.createForClass(UserLocation);
+
 export enum UserRole {
   Admin = 'admin',
   Owner = 'owner',
@@ -31,6 +56,30 @@ export class User {
 
   @Prop({ enum: UserRole, default: UserRole.User, index: true })
   role: UserRole;
+
+  @Prop({ trim: true, maxlength: 30 })
+  phone?: string;
+
+  @Prop({ trim: true, maxlength: 500 })
+  avatar?: string;
+
+  @Prop({
+    enum: [
+      'Available',
+      'On the way',
+      'In progress',
+      'Completed',
+      'Offline',
+      'Fully Booked',
+    ],
+  })
+  liveStatus?: LiveUserStatus;
+
+  @Prop({ type: UserLocationSchema })
+  location?: UserLocation;
+
+  @Prop({ type: Number, min: 1, max: 20, default: 5 })
+  maxDailyJobs?: number;
 }
 
 export type UserDocument = HydratedDocument<User>;
