@@ -32,16 +32,18 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Easy Blind Backend API')
     .setDescription(
-      'Production-style NestJS API for Easy-Blinds job management.',
+      'Production-style NestJS API for Easy-Blinds job, authentication, and user management.',
     )
     .setVersion('1.0.0')
+    .addTag('auth')
+    .addTag('users')
     .addTag('jobs')
     .addTag('health')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  const port = configService.get<number>('PORT', 4000);
+  const port = configService.get<number>('PORT', 3001);
   await app.listen(port);
 }
 

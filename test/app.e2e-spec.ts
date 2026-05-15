@@ -1,4 +1,6 @@
 process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test-jwt-secret-with-enough-length';
+process.env.JWT_EXPIRES_IN = '1h';
 
 import {
   INestApplication,
@@ -31,6 +33,20 @@ interface PaginatedJobsResponse {
   };
 }
 
+interface UserResponse {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  passwordHash?: string;
+}
+
+interface AuthResponse {
+  accessToken: string;
+  tokenType: 'Bearer';
+  user: UserResponse;
+}
+
 describe('Easy Blind Backend CRUD APIs (e2e)', () => {
   let app: INestApplication;
   let mongoServer: MongoMemoryServer;
@@ -41,7 +57,6 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
     process.env.TEST_MONGO_URI = mongoServer.getUri('easy-blinds-test');
     process.env.MONGO_URI = process.env.TEST_MONGO_URI;
     process.env.API_PREFIX = 'api';
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -59,6 +74,7 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
         transformOptions: { enableImplicitConversion: true },
       }),
     );
+
     await app.init();
     httpServer = app.getHttpServer() as Server;
   }, 120000);
@@ -125,5 +141,81 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
       .post('/api/v1/jobs')
       .send({ customerName: 'A' })
       .expect(400);
+  });
+
+  it('registers a user, prevents duplicate registration, logs in, and reads protected profile', async () => {
+    const registerPayload = {
+      name: 'Meera Nair',
+      email: 'meera@example.com',
+      password: 'SecurePass123!',
+      role: 'owner',
+    };
+
+    const registerResponse = await request(httpServer)
+      .post('/api/v1/auth/register')
+      .send(registerPayload)
+      .expect(201);
+    const registered = registerResponse.body as AuthResponse;
+
+    expect(registered.accessToken).toBeDefined();
+    expect(registered.tokenType).toBe('Bearer');
+    expect(registered.user.email).toBe(registerPayload.email);
+    expect(registered.user.passwordHash).toBeUndefined();
+
+    await request(httpServer)
+      .post('/api/v1/auth/register')
+      .send(registerPayload)
+      .expect(409);
+
+    const loginResponse = await request(httpServer)
+      .post('/api/v1/auth/login')
+      .send({
+        email: registerPayload.email,
+        password: registerPayload.password,
+      })
+      .expect(200);
+    const loggedIn = loginResponse.body as AuthResponse;
+
+    expect(loggedIn.accessToken).toBeDefined();
+    expect(loggedIn.user._id).toBe(registered.user._id);
+
+    await request(httpServer).get('/api/v1/auth/profile').expect(401);
+
+    const profileResponse = await request(httpServer)
+      .get('/api/v1/auth/profile')
+      .set('Authorization', `Bearer ${loggedIn.accessToken}`)
+      .expect(200);
+    const profile = profileResponse.body as UserResponse;
+
+    expect(profile.email).toBe(registerPayload.email);
+    expect(profile.passwordHash).toBeUndefined();
+
+    const updatedProfileResponse = await request(httpServer)
+      .patch('/api/v1/auth/profile')
+      .set('Authorization', `Bearer ${loggedIn.accessToken}`)
+      .send({ name: 'Meera Nair Updated' })
+      .expect(200);
+    const updatedProfile = updatedProfileResponse.body as UserResponse;
+
+    expect(updatedProfile.name).toBe('Meera Nair Updated');
+  });
+
+  it('protects user management routes with JWT authentication', async () => {
+    await request(httpServer).get('/api/v1/users').expect(401);
+
+    const loginResponse = await request(httpServer)
+      .post('/api/v1/auth/login')
+      .send({ email: 'meera@example.com', password: 'SecurePass123!' })
+      .expect(200);
+    const loggedIn = loginResponse.body as AuthResponse;
+
+    const usersResponse = await request(httpServer)
+      .get('/api/v1/users')
+      .set('Authorization', `Bearer ${loggedIn.accessToken}`)
+      .expect(200);
+    const users = usersResponse.body as UserResponse[];
+
+    expect(users.length).toBeGreaterThanOrEqual(1);
+    expect(users.every((user) => user.passwordHash === undefined)).toBe(true);
   });
 });

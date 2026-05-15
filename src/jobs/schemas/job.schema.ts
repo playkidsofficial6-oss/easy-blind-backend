@@ -22,20 +22,26 @@ export class Job {
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
   customerName: string;
 
-  @Prop({ required: true, lowercase: true, trim: true })
-  customerEmail: string;
+  @Prop({ required: false, lowercase: true, trim: true })
+  customerEmail?: string;
 
-  @Prop({ required: true, trim: true })
+  @Prop({ required: false, trim: true })
   customerPhone: string;
 
   @Prop({ required: true, trim: true, maxlength: 250 })
   address: string;
 
-  @Prop({ required: true, trim: true, maxlength: 80 })
-  productType: string;
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  productType?: string;
 
-  @Prop({ required: true, min: 1 })
-  quantity: number;
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  propertyType?: string;
+
+  @Prop({ required: false, min: 1 })
+  quantity?: number;
+
+  @Prop({ required: false, min: 0 })
+  projectValue?: number;
 
   @Prop({ required: true, enum: JobStatus, default: JobStatus.Pending })
   status: JobStatus;
