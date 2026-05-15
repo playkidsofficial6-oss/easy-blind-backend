@@ -30,7 +30,7 @@ function optionalNumber(
 export function validateEnvironment(env: Environment) {
   return {
     NODE_ENV: env.NODE_ENV ?? 'development',
-    PORT: optionalNumber(env, 'PORT', 4000),
+    PORT: optionalNumber(env, 'PORT', 3001),
     API_PREFIX: env.API_PREFIX ?? 'api',
     CORS_ORIGIN: env.CORS_ORIGIN ?? '*',
     MONGO_URI: requireString(
@@ -38,5 +38,7 @@ export function validateEnvironment(env: Environment) {
       'MONGO_URI',
       'mongodb://127.0.0.1:27017/easy-blinds',
     ),
+    JWT_SECRET: requireString(env, 'JWT_SECRET'),
+    JWT_EXPIRES_IN: env.JWT_EXPIRES_IN ?? '1d',
   };
 }
