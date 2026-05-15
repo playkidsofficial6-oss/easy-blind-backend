@@ -1,0 +1,81 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthenticatedUser } from '../auth/interfaces/jwt-user.interface';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { UpdateLiveLocationDto } from './dto/update-live-location.dto';
+import { LiveLocationService } from './live-location.service';
+
+interface AuthenticatedRequest extends Request {
+  user: JwtAuthenticatedUser;
+}
+
+@ApiTags('live-location')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('live-location')
+export class LiveLocationController {
+  constructor(private readonly liveLocationService: LiveLocationService) {}
+
+  @Post('update')
+  @ApiOperation({
+    summary: 'Update the logged-in salesman or fitter live location',
+  })
+  @ApiOkResponse({ description: 'Live location updated successfully.' })
+  updateLocation(
+    @Req() request: AuthenticatedRequest,
+    @Body() updateLiveLocationDto: UpdateLiveLocationDto,
+  ) {
+    return this.liveLocationService.updateLocation(
+      request.user,
+      updateLiveLocationDto,
+    );
+  }
+
+  @Get('all')
+  @ApiOperation({
+    summary: 'List all live locations for owner and sales manager users',
+  })
+  @ApiOkResponse({ description: 'Live locations returned successfully.' })
+  findAll(@Req() request: AuthenticatedRequest) {
+    return this.liveLocationService.findAll(request.user);
+  }
+
+  @Get(':userId')
+  @ApiOperation({ summary: 'Read a live location by user id' })
+  @ApiOkResponse({ description: 'Live location returned successfully.' })
+  findByUserId(
+    @Req() request: AuthenticatedRequest,
+    @Param('userId', ParseObjectIdPipe) userId: string,
+  ) {
+    return this.liveLocationService.findByUserId(request.user, userId);
+  }
+
+  @Delete(':userId')
+  @ApiOperation({
+    summary:
+      'Delete a live location by user id for owner and sales manager users',
+  })
+  @ApiOkResponse({ description: 'Live location deleted successfully.' })
+  deleteByUserId(
+    @Req() request: AuthenticatedRequest,
+    @Param('userId', ParseObjectIdPipe) userId: string,
+  ) {
+    return this.liveLocationService.deleteByUserId(request.user, userId);
+  }
+}

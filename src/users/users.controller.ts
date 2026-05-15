@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Param,
   Patch,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -15,7 +14,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
