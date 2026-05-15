@@ -99,6 +99,39 @@ export class LiveLocationService {
     );
   }
 
+  async setOnlineStatus(
+    authUser: JwtAuthenticatedUser,
+    isOnline: boolean,
+  ): Promise<LiveLocationResponse | null> {
+    const trackingRole = this.toTrackingRole(authUser.role);
+
+    if (!trackingRole) {
+      throw new ForbiddenException(
+        'Only salesman and fitter users can update live location status',
+      );
+    }
+
+    const userObjectId = new Types.ObjectId(authUser.userId);
+    const updatedLocation = await this.liveLocationModel
+      .findOneAndUpdate(
+        { userId: userObjectId },
+        {
+          $set: {
+            role: trackingRole,
+            isOnline,
+            lastUpdatedAt: new Date(),
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      )
+      .exec();
+
+    return updatedLocation ? this.toResponse(updatedLocation) : null;
+  }
+
   async findAll(
     authUser: JwtAuthenticatedUser,
   ): Promise<ApiResponse<LiveLocationResponse[]>> {

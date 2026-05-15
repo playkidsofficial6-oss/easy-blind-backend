@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from '../auth/interfaces/jwt-user.interface';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { UpdateLiveLocationDto } from './dto/update-live-location.dto';
+import { LiveLocationGateway } from './live-location.gateway';
 import { LiveLocationService } from './live-location.service';
 
 interface AuthenticatedRequest extends Request {
@@ -30,21 +31,28 @@ interface AuthenticatedRequest extends Request {
 @UseGuards(JwtAuthGuard)
 @Controller('live-location')
 export class LiveLocationController {
-  constructor(private readonly liveLocationService: LiveLocationService) {}
+  constructor(
+    private readonly liveLocationService: LiveLocationService,
+    private readonly liveLocationGateway: LiveLocationGateway,
+  ) {}
 
   @Post('update')
   @ApiOperation({
     summary: 'Update the logged-in salesman or fitter live location',
   })
   @ApiOkResponse({ description: 'Live location updated successfully.' })
-  updateLocation(
+  async updateLocation(
     @Req() request: AuthenticatedRequest,
     @Body() updateLiveLocationDto: UpdateLiveLocationDto,
   ) {
-    return this.liveLocationService.updateLocation(
+    const response = await this.liveLocationService.updateLocation(
       request.user,
       updateLiveLocationDto,
     );
+
+    this.liveLocationGateway.broadcastLocationUpdated(response.data);
+
+    return response;
   }
 
   @Get('all')
