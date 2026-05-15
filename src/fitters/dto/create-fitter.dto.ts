@@ -12,7 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { FitterProfileStatus } from '../schemas/fitter.schema';
+import { FitterProfileStatus } from '../fitter-status.enum';
 
 export class FitterLocationDto {
   @ApiProperty({ example: 25.2048 })

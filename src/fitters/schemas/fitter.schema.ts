@@ -1,13 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { User } from '../../users/schemas/user.schema';
-
-export enum FitterProfileStatus {
-  Available = 'available',
-  OnTheWay = 'on_the_way',
-  InProgress = 'in_progress',
-  FullyBooked = 'fully_booked',
-}
+export { FitterProfileStatus } from '../fitter-status.enum';
+import { FitterProfileStatus } from '../fitter-status.enum';
 
 @Schema({ _id: false, versionKey: false })
 export class FitterLocation {
@@ -63,4 +58,3 @@ export class Fitter {
 
 export type FitterDocument = HydratedDocument<Fitter>;
 export const FitterSchema = SchemaFactory.createForClass(Fitter);
-FitterSchema.index({ userId: 1 }, { unique: true });
