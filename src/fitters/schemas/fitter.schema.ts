@@ -1,32 +1,66 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { User, UserLocation, UserLocationSchema } from '../../users/schemas/user.schema';
+import { User } from '../../users/schemas/user.schema';
 
-export type FitterProfileStatus = 'available' | 'on_the_way' | 'in_progress' | 'fully_booked';
+export enum FitterProfileStatus {
+  Available = 'available',
+  OnTheWay = 'on_the_way',
+  InProgress = 'in_progress',
+  FullyBooked = 'fully_booked',
+}
+
+@Schema({ _id: false, versionKey: false })
+export class FitterLocation {
+  @Prop({ required: true, type: Number })
+  lat: number;
+
+  @Prop({ required: true, type: Number })
+  lng: number;
+
+  @Prop({ required: true, trim: true, maxlength: 255 })
+  address: string;
+
+  @Prop({ type: Date })
+  updatedAt?: Date;
+}
+
+export const FitterLocationSchema =
+  SchemaFactory.createForClass(FitterLocation);
 
 @Schema({ timestamps: true, versionKey: false })
 export class Fitter {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
-  user: User | Types.ObjectId;
+  @Prop({
+    type: Types.ObjectId,
+    ref: User.name,
+    required: true,
+    unique: true,
+    index: true,
+  })
+  userId: Types.ObjectId;
 
-  @Prop({ type: String, enum: ['available', 'on_the_way', 'in_progress', 'fully_booked'], default: 'available' })
+  @Prop({ trim: true, maxlength: 30 })
+  phone?: string;
+
+  @Prop({ type: FitterLocationSchema })
+  location?: FitterLocation;
+
+  @Prop({
+    enum: FitterProfileStatus,
+    default: FitterProfileStatus.Available,
+    index: true,
+  })
   status: FitterProfileStatus;
 
-  @Prop({ type: Number, default: 5 })
+  @Prop({ type: Number, min: 1, max: 20, default: 5 })
   capacity: number;
 
   @Prop({ type: [String], default: [] })
   skills: string[];
 
-  @Prop({ trim: true, maxlength: 30 })
-  phone?: string;
-
-  @Prop({ type: UserLocationSchema })
-  location?: UserLocation;
-
-  @Prop({ trim: true, maxlength: 500 })
+  @Prop({ trim: true, maxlength: 1000 })
   notes?: string;
 }
 
 export type FitterDocument = HydratedDocument<Fitter>;
 export const FitterSchema = SchemaFactory.createForClass(Fitter);
+FitterSchema.index({ userId: 1 }, { unique: true });
