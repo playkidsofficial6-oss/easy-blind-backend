@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsPhoneNumber,
   IsString,
@@ -20,9 +21,10 @@ export class CreateJobDto {
   @MaxLength(120)
   customerName: string;
 
-  @ApiProperty({ example: 'aarav@example.com' })
+  @ApiPropertyOptional({ example: 'aarav@example.com' })
+  @IsOptional()
   @IsEmail()
-  customerEmail: string;
+  customerEmail?: string;
 
   @ApiProperty({ example: '+919876543210' })
   @IsPhoneNumber(undefined)
@@ -34,16 +36,30 @@ export class CreateJobDto {
   @MaxLength(250)
   address: string;
 
-  @ApiProperty({ example: 'Motorized Blinds' })
+  @ApiPropertyOptional({ example: 'Motorized Blinds' })
+  @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(80)
-  productType: string;
+  productType?: string;
 
-  @ApiProperty({ example: 4, minimum: 1 })
+  @ApiPropertyOptional({ example: 'Villa' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  propertyType?: string;
+
+  @ApiPropertyOptional({ example: 4, minimum: 1 })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  quantity: number;
+  quantity?: number;
+
+  @ApiPropertyOptional({ example: 5000, minimum: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  projectValue?: number;
 
   @ApiPropertyOptional({ enum: JobStatus, default: JobStatus.Pending })
   @IsOptional()
