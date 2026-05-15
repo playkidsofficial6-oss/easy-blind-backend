@@ -24,15 +24,19 @@ import {
   LiveLocationService,
 } from './live-location.service';
 
-interface AuthenticatedSocket extends Socket {
+type AuthenticatedSocket = Socket & {
   data: {
     user?: JwtAuthenticatedUser;
   };
-}
+};
 
 interface LiveLocationSocketEvent {
   userId: string;
   role: string;
+  location: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
   latitude: number;
   longitude: number;
   accuracy?: number;
@@ -161,8 +165,9 @@ export class LiveLocationGateway
     this.server.to(MANAGER_ROOM).emit('location:updated', {
       userId: location.userId,
       role: location.role,
-      latitude: location.latitude,
-      longitude: location.longitude,
+      location: location.location,
+      latitude: location.location.coordinates[1],
+      longitude: location.location.coordinates[0],
       accuracy: location.accuracy,
       speed: location.speed,
       heading: location.heading,

@@ -9,13 +9,25 @@ export type LiveUserStatus =
   | 'Offline'
   | 'Fully Booked';
 
+/**
+ * Native GeoJSON Point sub-document.
+ * coordinates = [longitude, latitude] — GeoJSON standard order.
+ */
 @Schema({ _id: false, versionKey: false })
 export class UserLocation {
-  @Prop({ required: true, type: Number })
-  lat: number;
+  @Prop({
+    type: String,
+    enum: ['Point'],
+    default: 'Point',
+    required: true,
+  })
+  type: 'Point';
 
-  @Prop({ required: true, type: Number })
-  lng: number;
+  /**
+   * [longitude, latitude] — GeoJSON order.
+   */
+  @Prop({ type: [Number], required: true })
+  coordinates: [number, number];
 
   @Prop({ trim: true, maxlength: 255 })
   address?: string;
@@ -84,3 +96,6 @@ export class User {
 
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// 2dsphere index enables geospatial queries (sparse = only index docs that have location set)
+UserSchema.index({ location: '2dsphere' }, { sparse: true });

@@ -24,8 +24,10 @@ export interface LiveLocationResponse {
   _id: string;
   userId: string;
   role: LiveLocationRole;
-  latitude: number;
-  longitude: number;
+  location: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
   accuracy?: number;
   speed?: number;
   heading?: number;
@@ -44,7 +46,7 @@ type LiveLocationPlainObject = LiveLocation & {
 
 type LiveLocationUpdatePayload = Pick<
   LiveLocation,
-  'userId' | 'role' | 'latitude' | 'longitude' | 'lastUpdatedAt'
+  'userId' | 'role' | 'location' | 'lastUpdatedAt'
 > &
   Partial<Pick<LiveLocation, 'accuracy' | 'speed' | 'heading' | 'isOnline'>>;
 
@@ -71,8 +73,14 @@ export class LiveLocationService {
     const payload: LiveLocationUpdatePayload = {
       userId: userObjectId,
       role: trackingRole,
-      latitude: updateLiveLocationDto.latitude,
-      longitude: updateLiveLocationDto.longitude,
+
+      location: {
+        type: 'Point',
+        coordinates: [
+          updateLiveLocationDto.longitude,
+          updateLiveLocationDto.latitude,
+        ],
+      },
       accuracy: updateLiveLocationDto.accuracy,
       speed: updateLiveLocationDto.speed,
       heading: updateLiveLocationDto.heading,
@@ -232,8 +240,7 @@ export class LiveLocationService {
       _id: plainLocation._id.toString(),
       userId: plainLocation.userId.toString(),
       role: plainLocation.role,
-      latitude: plainLocation.latitude,
-      longitude: plainLocation.longitude,
+      location: plainLocation.location,
       accuracy: plainLocation.accuracy,
       speed: plainLocation.speed,
       heading: plainLocation.heading,

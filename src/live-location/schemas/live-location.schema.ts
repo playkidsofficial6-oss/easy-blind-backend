@@ -21,11 +21,23 @@ export class LiveLocation {
   @Prop({ enum: LiveLocationRole, required: true, index: true })
   role: LiveLocationRole;
 
-  @Prop({ required: true, type: Number, min: -90, max: 90 })
-  latitude: number;
 
-  @Prop({ required: true, type: Number, min: -180, max: 180 })
-  longitude: number;
+
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number],
+      required: true,
+    },
+  })
+  location: {
+    type: 'Point';
+    coordinates: [number, number]; // [longitude, latitude]
+  };
 
   @Prop({ type: Number, min: 0 })
   accuracy?: number;
@@ -53,3 +65,4 @@ export const LiveLocationSchema = SchemaFactory.createForClass(LiveLocation);
 LiveLocationSchema.index({ userId: 1 }, { unique: true });
 LiveLocationSchema.index({ role: 1, isOnline: 1, lastUpdatedAt: -1 });
 LiveLocationSchema.index({ lastUpdatedAt: -1 });
+LiveLocationSchema.index({ location: '2dsphere' });

@@ -182,7 +182,9 @@ export class UsersService {
 
     if (updateUserDto.location !== undefined) {
       updatePayload.location = {
-        ...updateUserDto.location,
+        type: 'Point',
+        coordinates: [updateUserDto.location.lng, updateUserDto.location.lat],
+        address: updateUserDto.location.address,
         updatedAt: new Date(),
       };
     }
