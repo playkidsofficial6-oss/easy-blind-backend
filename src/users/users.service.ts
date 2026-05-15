@@ -8,13 +8,24 @@ import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User, UserDocument, UserRole } from './schemas/user.schema';
+import {
+  LiveUserStatus,
+  User,
+  UserDocument,
+  UserLocation,
+  UserRole,
+} from './schemas/user.schema';
 
 export interface UserResponse {
   _id: string;
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
+  avatar?: string;
+  liveStatus?: LiveUserStatus;
+  location?: UserLocation;
+  maxDailyJobs?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -30,6 +41,21 @@ type UserPlainObject = User & {
   createdAt?: Date;
   updatedAt?: Date;
 };
+
+type UserUpdatePayload = Partial<
+  Pick<
+    User,
+    | 'name'
+    | 'email'
+    | 'passwordHash'
+    | 'role'
+    | 'phone'
+    | 'avatar'
+    | 'liveStatus'
+    | 'location'
+    | 'maxDailyJobs'
+  >
+>;
 
 @Injectable()
 export class UsersService {
@@ -111,7 +137,7 @@ export class UsersService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponse> {
-    const updatePayload: Partial<User> = {};
+    const updatePayload: UserUpdatePayload = {};
 
     if (updateUserDto.name !== undefined) {
       updatePayload.name = updateUserDto.name.trim();
@@ -140,6 +166,29 @@ export class UsersService {
 
     if (updateUserDto.role !== undefined) {
       updatePayload.role = updateUserDto.role;
+    }
+
+    if (updateUserDto.phone !== undefined) {
+      updatePayload.phone = updateUserDto.phone.trim();
+    }
+
+    if (updateUserDto.avatar !== undefined) {
+      updatePayload.avatar = updateUserDto.avatar.trim();
+    }
+
+    if (updateUserDto.liveStatus !== undefined) {
+      updatePayload.liveStatus = updateUserDto.liveStatus;
+    }
+
+    if (updateUserDto.location !== undefined) {
+      updatePayload.location = {
+        ...updateUserDto.location,
+        updatedAt: new Date(),
+      };
+    }
+
+    if (updateUserDto.maxDailyJobs !== undefined) {
+      updatePayload.maxDailyJobs = updateUserDto.maxDailyJobs;
     }
 
     try {
@@ -181,6 +230,11 @@ export class UsersService {
       name: plainUser.name,
       email: plainUser.email,
       role: plainUser.role,
+      phone: plainUser.phone,
+      avatar: plainUser.avatar,
+      liveStatus: plainUser.liveStatus,
+      location: plainUser.location,
+      maxDailyJobs: plainUser.maxDailyJobs,
       createdAt: plainUser.createdAt,
       updatedAt: plainUser.updatedAt,
     };
