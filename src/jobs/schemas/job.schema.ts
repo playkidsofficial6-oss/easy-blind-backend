@@ -25,13 +25,13 @@ export class Job {
   @Prop({ required: true, lowercase: true, trim: true })
   customerEmail: string;
 
-  @Prop({ required: true, trim: true })
+  @Prop({ required: false, trim: true })
   customerPhone: string;
 
   @Prop({ required: true, trim: true, maxlength: 250 })
   address: string;
 
-  @Prop({ required: true, trim: true, maxlength: 80 })
+  @Prop({ required: false, trim: true, maxlength: 80 })
   productType: string;
 
   @Prop({ required: true, min: 1 })
