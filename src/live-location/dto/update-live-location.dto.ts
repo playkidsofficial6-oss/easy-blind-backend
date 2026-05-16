@@ -1,18 +1,44 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+
+export class GeoPointDto {
+  @ApiProperty({ example: 'Point', enum: ['Point'] })
+  @IsEnum(['Point'])
+  type: 'Point';
+
+  @ApiProperty({
+    example: [76.1199, 11.1203],
+    description: '[longitude, latitude]',
+    minItems: 2,
+    maxItems: 2,
+    items: { type: 'number' },
+  })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @IsNumber({}, { each: true })
+  coordinates: [number, number]; // [longitude, latitude]
+}
 
 export class UpdateLiveLocationDto {
-  @ApiProperty({ example: 11.1203, minimum: -90, maximum: 90 })
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  latitude: number;
-
-  @ApiProperty({ example: 76.1199, minimum: -180, maximum: 180 })
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  longitude: number;
+  @ApiProperty({ type: GeoPointDto })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => GeoPointDto)
+  location: GeoPointDto;
 
   @ApiPropertyOptional({ example: 12.5, minimum: 0 })
   @IsOptional()
