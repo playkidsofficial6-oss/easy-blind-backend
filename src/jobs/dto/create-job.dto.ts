@@ -81,4 +81,14 @@ export class CreateJobDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;
+
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsOptional()
+  @IsString()
+  assignedTo?: string;
+
+  @ApiPropertyOptional({ example: 'Admin User' })
+  @IsOptional()
+  @IsString()
+  assignedBy?: string;
 }

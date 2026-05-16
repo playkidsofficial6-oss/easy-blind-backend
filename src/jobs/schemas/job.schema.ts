@@ -54,6 +54,12 @@ export class Job {
 
   @Prop()
   scheduledAt?: Date;
+
+  @Prop({ required: false, trim: true })
+  assignedTo?: string;
+
+  @Prop({ required: false, trim: true })
+  assignedBy?: string;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
