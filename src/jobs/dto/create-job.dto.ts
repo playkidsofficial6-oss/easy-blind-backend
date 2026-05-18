@@ -91,4 +91,8 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   assignedBy?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  quotation?: any;
 }

@@ -17,6 +17,63 @@ export enum JobPriority {
   High = 'high',
 }
 
+@Schema()
+export class QuotationItem {
+  @Prop({ required: false })
+  id: string;
+
+  @Prop({ required: false })
+  description: string;
+
+  @Prop({ required: false })
+  quantity: number;
+
+  @Prop({ required: false })
+  unitPrice: number;
+
+  @Prop({ required: false })
+  total: number;
+}
+
+@Schema()
+export class Quotation {
+  @Prop({ required: false })
+  id: string;
+
+  @Prop({ required: false })
+  client: string;
+
+  @Prop()
+  salesmanId?: string;
+
+  @Prop()
+  salesmanName?: string;
+
+  @Prop()
+  clientPhone?: string;
+
+  @Prop()
+  clientEmail?: string;
+
+  @Prop()
+  notes?: string;
+
+  @Prop({ required: true })
+  total: number;
+
+  @Prop({ required: true, default: 'Draft' })
+  status: string;
+
+  @Prop()
+  date: string;
+
+  @Prop()
+  sentDate?: string;
+
+  @Prop({ type: [QuotationItem], default: [] })
+  items: QuotationItem[];
+}
+
 @Schema({ timestamps: true, versionKey: false })
 export class Job {
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
@@ -60,6 +117,9 @@ export class Job {
 
   @Prop({ required: false, trim: true })
   assignedBy?: string;
+
+  @Prop({ type: Quotation })
+  quotation?: Quotation;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
