@@ -92,6 +92,16 @@ export class CreateJobDto {
   @IsString()
   assignedBy?: string;
 
+  @ApiPropertyOptional({ example: 'user_id_of_salesman' })
+  @IsOptional()
+  @IsString()
+  assignedSalesman?: string;
+
+  @ApiPropertyOptional({ example: 'user_id_of_fitter' })
+  @IsOptional()
+  @IsString()
+  assignedFitter?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   quotation?: any;
