@@ -14,7 +14,7 @@ async function bootstrap() {
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api'));
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.enableCors({
-    origin: "*", //||configService.get<string>('CORS_ORIGIN', '*'),
+    origin: true, // Echoes the request origin, required when credentials is true
     credentials: true,
   });
   app.use(helmet());

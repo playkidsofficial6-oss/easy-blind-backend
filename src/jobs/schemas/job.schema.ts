@@ -118,6 +118,12 @@ export class Job {
   @Prop({ required: false, trim: true })
   assignedBy?: string;
 
+  @Prop({ required: false, trim: true })
+  assignedSalesman?: string;
+
+  @Prop({ required: false, trim: true })
+  assignedFitter?: string;
+
   @Prop({ type: Quotation })
   quotation?: Quotation;
 }
