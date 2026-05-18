@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Server, Socket } from 'socket.io';
+import { Namespace, Server, Socket } from 'socket.io';
 import {
   JwtAuthenticatedUser,
   JwtPayload,
@@ -70,7 +70,7 @@ export class LiveLocationGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server: Namespace;
 
   private readonly logger = new Logger(LiveLocationGateway.name);
   private readonly activeSocketsByUserId = new Map<string, string>();
@@ -243,7 +243,7 @@ export class LiveLocationGateway
       return;
     }
 
-    const existingSocket = this.server.sockets.sockets.get(existingSocketId);
+    const existingSocket = this.server.sockets.get(existingSocketId);
 
     if (existingSocket) {
       existingSocket.emit('error', {

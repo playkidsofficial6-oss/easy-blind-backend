@@ -76,10 +76,7 @@ export class LiveLocationService {
 
       location: {
         type: 'Point',
-        coordinates: [
-          updateLiveLocationDto.longitude,
-          updateLiveLocationDto.latitude,
-        ],
+        coordinates: updateLiveLocationDto.location.coordinates,
       },
       accuracy: updateLiveLocationDto.accuracy,
       speed: updateLiveLocationDto.speed,
@@ -237,8 +234,8 @@ export class LiveLocationService {
     const plainLocation = location.toObject() as LiveLocationPlainObject;
 
     return {
-      _id: plainLocation._id.toString(),
-      userId: plainLocation.userId.toString(),
+      _id: plainLocation._id?.toString(),
+      userId: plainLocation.userId?.toString(),
       role: plainLocation.role,
       location: plainLocation.location,
       accuracy: plainLocation.accuracy,
