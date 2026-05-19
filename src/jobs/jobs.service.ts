@@ -1,20 +1,64 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { Job, JobDocument } from './schemas/job.schema';
+import { geocodeAddress } from './utils/geocoder';
 
 @Injectable()
-export class JobsService {
+export class JobsService implements OnModuleInit {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
   ) {}
 
+  async onModuleInit() {
+    this.backfillGeocoding().catch((err) => {
+      console.error('Error in job geocoding backfill:', err);
+    });
+  }
+
+  private async backfillGeocoding() {
+    const jobsToBackfill = await this.jobModel.find({
+      address: { $exists: true, $ne: '' },
+      $or: [
+        { location: { $exists: false } },
+        { 'location.coordinates': [0, 0] },
+      ],
+    }).exec();
+
+    if (jobsToBackfill.length === 0) {
+      return;
+    }
+
+    console.log(`[Geocoder] Backfilling location for ${jobsToBackfill.length} jobs...`);
+    for (const job of jobsToBackfill) {
+      try {
+        const coordinates = await geocodeAddress(job.address);
+        await this.jobModel.findByIdAndUpdate(job._id, {
+          location: {
+            type: 'Point',
+            coordinates,
+          },
+        }).exec();
+        // Delay slightly to prevent slamming the geocoding service
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      } catch (err) {
+        console.error(`[Geocoder] Failed backfill for job ${job._id}:`, err.message);
+      }
+    }
+    console.log('[Geocoder] Location backfill completed.');
+  }
+
   async create(createJobDto: CreateJobDto): Promise<JobDocument> {
+    const coordinates = await geocodeAddress(createJobDto.address);
     const createdJob = new this.jobModel({
       ...createJobDto,
+      location: {
+        type: 'Point',
+        coordinates,
+      },
       scheduledAt: createJobDto.scheduledAt
         ? new Date(createJobDto.scheduledAt)
         : undefined,
@@ -58,11 +102,23 @@ export class JobsService {
   }
 
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobDocument> {
+    let locationUpdate = {};
+    if (updateJobDto.address) {
+      const coordinates = await geocodeAddress(updateJobDto.address);
+      locationUpdate = {
+        location: {
+          type: 'Point',
+          coordinates,
+        },
+      };
+    }
+
     const updatedJob = await this.jobModel
       .findByIdAndUpdate(
         id,
         {
           ...updateJobDto,
+          ...locationUpdate,
           scheduledAt: updateJobDto.scheduledAt
             ? new Date(updateJobDto.scheduledAt)
             : undefined,
