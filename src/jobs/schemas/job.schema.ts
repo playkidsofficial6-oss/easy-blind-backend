@@ -74,6 +74,23 @@ export class Quotation {
   items: QuotationItem[];
 }
 
+@Schema({ _id: false })
+export class GeoLocation {
+  @Prop({
+    type: String,
+    enum: ['Point'],
+    default: 'Point',
+  })
+  type: string;
+
+  @Prop({
+    type: [Number],
+    required: true,
+    default: [0, 0],
+  })
+  coordinates: number[];
+}
+
 @Schema({ timestamps: true, versionKey: false })
 export class Job {
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
@@ -87,6 +104,9 @@ export class Job {
 
   @Prop({ required: true, trim: true, maxlength: 250 })
   address: string;
+
+  @Prop({ type: GeoLocation, required: false })
+  location?: GeoLocation;
 
   @Prop({ required: false, trim: true, maxlength: 80 })
   productType?: string;
@@ -133,3 +153,5 @@ export const JobSchema = SchemaFactory.createForClass(Job);
 JobSchema.index({ customerEmail: 1 });
 JobSchema.index({ status: 1, scheduledAt: 1 });
 JobSchema.index({ createdAt: -1 });
+JobSchema.index({ location: '2dsphere' });
+
