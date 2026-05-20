@@ -17,6 +17,41 @@ export class JobsService implements OnModuleInit {
     this.backfillGeocoding().catch((err) => {
       console.error('Error in job geocoding backfill:', err);
     });
+    this.backfillNames().catch((err) => {
+      console.error('Error in job names backfill:', err);
+    });
+  }
+
+  private async backfillNames() {
+    const jobsToBackfill = await this.jobModel.find({
+      $or: [
+        { firstName: { $exists: false } },
+        { lastName: { $exists: false } }
+      ]
+    }).exec();
+
+    if (jobsToBackfill.length === 0) {
+      return;
+    }
+
+    console.log(`[Backfill] Splitting customerName into firstName and lastName for ${jobsToBackfill.length} jobs...`);
+    for (const job of jobsToBackfill) {
+      try {
+        const anyJob = job as any;
+        const customerName = anyJob.customerName || '';
+        const parts = customerName.trim().split(' ');
+        const firstName = parts[0] || 'Unknown';
+        const lastName = parts.slice(1).join(' ') || 'Unknown';
+
+        await this.jobModel.updateOne(
+          { _id: job._id },
+          { $set: { firstName, lastName } }
+        ).exec();
+      } catch (err) {
+        console.error(`[Backfill] Failed name backfill for job ${job._id}:`, err);
+      }
+    }
+    console.log('[Backfill] Name backfill completed.');
   }
 
   private async backfillGeocoding() {
@@ -153,7 +188,8 @@ export class JobsService implements OnModuleInit {
     if (query.search) {
       const search = new RegExp(query.search, 'i');
       filter.$or = [
-        { customerName: search },
+        { firstName: search },
+        { lastName: search },
         { customerEmail: search },
         { address: search },
         { productType: search },

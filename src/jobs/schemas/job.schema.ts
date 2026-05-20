@@ -93,8 +93,11 @@ export class GeoLocation {
 
 @Schema({ timestamps: true, versionKey: false })
 export class Job {
-  @Prop({ required: true, trim: true, minlength: 2, maxlength: 120 })
-  customerName: string;
+  @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
+  firstName: string;
+
+  @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
+  lastName: string;
 
   @Prop({ required: false, lowercase: true, trim: true })
   customerEmail?: string;
@@ -146,9 +149,19 @@ export class Job {
 
   @Prop({ type: Quotation })
   quotation?: Quotation;
+
+  @Prop()
+  timerStartedAt?: Date;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
+
+JobSchema.virtual('customerName').get(function () {
+  return `${this.firstName || ''} ${this.lastName || ''}`.trim();
+});
+
+JobSchema.set('toJSON', { virtuals: true });
+JobSchema.set('toObject', { virtuals: true });
 
 JobSchema.index({ customerEmail: 1 });
 JobSchema.index({ status: 1, scheduledAt: 1 });

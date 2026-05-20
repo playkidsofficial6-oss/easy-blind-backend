@@ -15,11 +15,17 @@ import {
 import { JobPriority, JobStatus } from '../schemas/job.schema';
 
 export class CreateJobDto {
-  @ApiProperty({ example: 'Aarav Sharma' })
+  @ApiProperty({ example: 'Aarav' })
   @IsString()
   @MinLength(2)
-  @MaxLength(120)
-  customerName: string;
+  @MaxLength(60)
+  firstName: string;
+
+  @ApiProperty({ example: 'Sharma' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(60)
+  lastName: string;
 
   @ApiPropertyOptional({ example: 'aarav@example.com' })
   @IsOptional()
@@ -91,6 +97,11 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   assignedBy?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  timerStartedAt?: string;
 
   @ApiPropertyOptional({ example: 'user_id_of_salesman' })
   @IsOptional()
