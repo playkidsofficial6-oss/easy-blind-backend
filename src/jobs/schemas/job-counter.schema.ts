@@ -13,5 +13,3 @@ export class JobCounter {
 }
 
 export const JobCounterSchema = SchemaFactory.createForClass(JobCounter);
-
-JobCounterSchema.index({ key: 1 }, { unique: true });

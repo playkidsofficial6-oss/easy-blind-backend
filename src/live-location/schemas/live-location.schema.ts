@@ -14,7 +14,6 @@ export class LiveLocation {
     ref: User.name,
     required: true,
     unique: true,
-    index: true,
   })
   userId: Types.ObjectId;
 
@@ -62,7 +61,6 @@ export class LiveLocation {
 export type LiveLocationDocument = HydratedDocument<LiveLocation>;
 export const LiveLocationSchema = SchemaFactory.createForClass(LiveLocation);
 
-LiveLocationSchema.index({ userId: 1 }, { unique: true });
 LiveLocationSchema.index({ role: 1, isOnline: 1, lastUpdatedAt: -1 });
 LiveLocationSchema.index({ lastUpdatedAt: -1 });
 LiveLocationSchema.index({ location: '2dsphere' });

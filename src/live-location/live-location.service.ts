@@ -90,7 +90,7 @@ export class LiveLocationService {
         { userId: userObjectId },
         { $set: payload },
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
           upsert: true,
           setDefaultsOnInsert: true,
@@ -128,7 +128,7 @@ export class LiveLocationService {
           },
         },
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
         },
       )

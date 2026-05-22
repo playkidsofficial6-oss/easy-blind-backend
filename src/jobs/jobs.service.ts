@@ -97,7 +97,7 @@ export class JobsService implements OnModuleInit {
           $inc: { sequence: 1 },
           $setOnInsert: { key: this.getCounterKey(year) },
         },
-        { new: true, upsert: true, setDefaultsOnInsert: true },
+        { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true },
       )
       .exec();
 
@@ -337,7 +337,7 @@ export class JobsService implements OnModuleInit {
 
     const updatedJob = await this.jobModel
       .findOneAndUpdate(this.getIdentifierFilter(id), updatePayload, {
-        new: true,
+        returnDocument: 'after',
         runValidators: true,
       })
       .exec();
@@ -424,7 +424,7 @@ export class JobsService implements OnModuleInit {
           ...(workflowDto.notes !== undefined ? { notes: workflowDto.notes } : {}),
           ...state.timestamps,
         },
-        { new: true, runValidators: true },
+        { returnDocument: 'after', runValidators: true },
       )
       .exec();
 

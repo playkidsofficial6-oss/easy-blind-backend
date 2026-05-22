@@ -128,7 +128,7 @@ export class FittersService {
         { userId: user._id },
         { $set: this.toUpdatePayload(updateFitterDto) },
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
           upsert: true,
           setDefaultsOnInsert: true,
