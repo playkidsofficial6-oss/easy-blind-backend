@@ -23,7 +23,7 @@ export class CreateJobDto {
 
   @ApiProperty({ example: 'Sharma' })
   @IsString()
-  @MinLength(2)
+  @IsOptional()
   @MaxLength(60)
   lastName: string;
 
@@ -33,8 +33,9 @@ export class CreateJobDto {
   customerEmail?: string;
 
   @ApiProperty({ example: '+919876543210' })
-  @IsPhoneNumber(undefined)
-  customerPhone: string;
+  @IsPhoneNumber()
+  @IsOptional()
+  customerPhone?: string;
 
   @ApiProperty({ example: '12 MG Road, Bengaluru, Karnataka' })
   @IsString()
