@@ -17,6 +17,13 @@ export enum JobPriority {
   High = 'high',
 }
 
+export enum SalesmanWorkflowStatus {
+  NotStarted = 'not_started',
+  Travelling = 'travelling',
+  Measuring = 'measuring',
+  Completed = 'completed',
+}
+
 @Schema()
 export class QuotationItem {
   @Prop({ required: false })
@@ -147,6 +154,29 @@ export class Job {
   @Prop({ required: false, trim: true })
   assignedSalesman?: string;
 
+  @Prop({
+    required: false,
+    enum: SalesmanWorkflowStatus,
+    default: SalesmanWorkflowStatus.NotStarted,
+    index: true,
+  })
+  salesmanWorkflowStatus?: SalesmanWorkflowStatus;
+
+  @Prop({ required: false, trim: true })
+  activeSalesmanId?: string;
+
+  @Prop({ required: false, trim: true })
+  activeSalesmanName?: string;
+
+  @Prop()
+  travelStartedAt?: Date;
+
+  @Prop()
+  measurementStartedAt?: Date;
+
+  @Prop()
+  measurementCompletedAt?: Date;
+
   @Prop({ required: false, trim: true })
   assignedFitter?: string;
 
@@ -169,6 +199,6 @@ JobSchema.set('toObject', { virtuals: true });
 JobSchema.index({ jobId: 1 }, { unique: true, sparse: true });
 JobSchema.index({ customerEmail: 1 });
 JobSchema.index({ status: 1, scheduledAt: 1 });
+JobSchema.index({ assignedSalesman: 1, salesmanWorkflowStatus: 1 });
 JobSchema.index({ createdAt: -1 });
 JobSchema.index({ location: '2dsphere' });
-

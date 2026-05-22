@@ -3,10 +3,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
+import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { JobCounter, JobCounterDocument } from './schemas/job-counter.schema';
-import { Job, JobDocument } from './schemas/job.schema';
+import {
+  Job,
+  JobDocument,
+  JobStatus,
+  SalesmanWorkflowStatus,
+} from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
+import { User, UserDocument } from '../users/schemas/user.schema';
 
 const JOB_ID_PREFIX = 'JOB';
 const JOB_ID_SEQUENCE_WIDTH = 4;
@@ -18,6 +25,7 @@ export class JobsService implements OnModuleInit {
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
     @InjectModel(JobCounter.name)
     private readonly jobCounterModel: Model<JobCounterDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   async onModuleInit() {
@@ -47,7 +55,9 @@ export class JobsService implements OnModuleInit {
     )}`;
   }
 
-  private parseJobId(jobId?: string | null): { year: string; sequence: number } | null {
+  private parseJobId(
+    jobId?: string | null,
+  ): { year: string; sequence: number } | null {
     if (!jobId || !JOB_ID_PATTERN.test(jobId)) {
       return null;
     }
@@ -83,7 +93,10 @@ export class JobsService implements OnModuleInit {
     const counter = await this.jobCounterModel
       .findOneAndUpdate(
         { key: this.getCounterKey(year) },
-        { $inc: { sequence: 1 }, $setOnInsert: { key: this.getCounterKey(year) } },
+        {
+          $inc: { sequence: 1 },
+          $setOnInsert: { key: this.getCounterKey(year) },
+        },
         { new: true, upsert: true, setDefaultsOnInsert: true },
       )
       .exec();
@@ -128,10 +141,14 @@ export class JobsService implements OnModuleInit {
       return;
     }
 
-    console.log(`[Backfill] Assigning Job IDs for ${jobsToBackfill.length} jobs...`);
+    console.log(
+      `[Backfill] Assigning Job IDs for ${jobsToBackfill.length} jobs...`,
+    );
     for (const job of jobsToBackfill) {
       try {
-        const { createdAt } = job as JobDocument & { createdAt?: Date | string };
+        const { createdAt } = job as JobDocument & {
+          createdAt?: Date | string;
+        };
         const dateSeed = createdAt ? new Date(createdAt) : new Date();
         const jobId = await this.generateNextJobId(dateSeed);
         await this.jobModel
@@ -150,7 +167,10 @@ export class JobsService implements OnModuleInit {
           )
           .exec();
       } catch (err) {
-        console.error(`[Backfill] Failed Job ID backfill for job ${job._id}:`, err);
+        console.error(
+          `[Backfill] Failed Job ID backfill for job ${job._id}:`,
+          err,
+        );
       }
     }
     console.log('[Backfill] Job ID backfill completed.');
@@ -178,7 +198,9 @@ export class JobsService implements OnModuleInit {
         const firstName = parts[0] || 'Unknown';
         const lastName = parts.slice(1).join(' ') || 'Unknown';
 
-        await this.jobModel.updateOne({ _id: job._id }, { $set: { firstName, lastName } }).exec();
+        await this.jobModel
+          .updateOne({ _id: job._id }, { $set: { firstName, lastName } })
+          .exec();
       } catch (err) {
         console.error(`[Backfill] Failed name backfill for job ${job._id}:`, err);
       }
@@ -190,7 +212,10 @@ export class JobsService implements OnModuleInit {
     const jobsToBackfill = await this.jobModel
       .find({
         address: { $exists: true, $ne: '' },
-        $or: [{ location: { $exists: false } }, { 'location.coordinates': [0, 0] }],
+        $or: [
+          { location: { $exists: false } },
+          { 'location.coordinates': [0, 0] },
+        ],
       })
       .exec();
 
@@ -198,7 +223,9 @@ export class JobsService implements OnModuleInit {
       return;
     }
 
-    console.log(`[Geocoder] Backfilling location for ${jobsToBackfill.length} jobs...`);
+    console.log(
+      `[Geocoder] Backfilling location for ${jobsToBackfill.length} jobs...`,
+    );
     for (const job of jobsToBackfill) {
       try {
         const coordinates = await geocodeAddress(job.address);
@@ -229,7 +256,9 @@ export class JobsService implements OnModuleInit {
         type: 'Point',
         coordinates,
       },
-      scheduledAt: createJobDto.scheduledAt ? new Date(createJobDto.scheduledAt) : undefined,
+      scheduledAt: createJobDto.scheduledAt
+        ? new Date(createJobDto.scheduledAt)
+        : undefined,
     });
     return createdJob.save();
   }
@@ -241,7 +270,12 @@ export class JobsService implements OnModuleInit {
     const filter = this.buildFilter(query);
 
     const [items, total] = await Promise.all([
-      this.jobModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.jobModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.jobModel.countDocuments(filter).exec(),
     ]);
 
@@ -265,7 +299,9 @@ export class JobsService implements OnModuleInit {
   }
 
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobDocument> {
-    const { jobId: _jobId, ...safeUpdateDto } = updateJobDto as UpdateJobDto & { jobId?: string };
+    const { jobId: _jobId, ...safeUpdateDto } = updateJobDto as UpdateJobDto & {
+      jobId?: string;
+    };
     let locationUpdate = {};
     if (safeUpdateDto.address) {
       const coordinates = await geocodeAddress(safeUpdateDto.address);
@@ -277,16 +313,33 @@ export class JobsService implements OnModuleInit {
       };
     }
 
+    const dateUpdates: Record<string, Date> = {};
+    if (safeUpdateDto.scheduledAt)
+      dateUpdates.scheduledAt = new Date(safeUpdateDto.scheduledAt);
+    if (safeUpdateDto.timerStartedAt)
+      dateUpdates.timerStartedAt = new Date(safeUpdateDto.timerStartedAt);
+    if (safeUpdateDto.travelStartedAt)
+      dateUpdates.travelStartedAt = new Date(safeUpdateDto.travelStartedAt);
+    if (safeUpdateDto.measurementStartedAt)
+      dateUpdates.measurementStartedAt = new Date(
+        safeUpdateDto.measurementStartedAt,
+      );
+    if (safeUpdateDto.measurementCompletedAt)
+      dateUpdates.measurementCompletedAt = new Date(
+        safeUpdateDto.measurementCompletedAt,
+      );
+
+    const updatePayload = {
+      ...safeUpdateDto,
+      ...locationUpdate,
+      ...dateUpdates,
+    };
+
     const updatedJob = await this.jobModel
-      .findOneAndUpdate(
-        this.getIdentifierFilter(id),
-        {
-          ...safeUpdateDto,
-          ...locationUpdate,
-          scheduledAt: safeUpdateDto.scheduledAt ? new Date(safeUpdateDto.scheduledAt) : undefined,
-        },
-        { new: true, runValidators: true },
-      )
+      .findOneAndUpdate(this.getIdentifierFilter(id), updatePayload, {
+        new: true,
+        runValidators: true,
+      })
       .exec();
 
     if (!updatedJob) {
@@ -295,8 +348,107 @@ export class JobsService implements OnModuleInit {
     return updatedJob;
   }
 
+  async startSalesmanTravel(
+    id: string,
+    workflowDto: SalesmanWorkflowDto,
+  ): Promise<JobDocument> {
+    const now = new Date();
+    return this.applySalesmanWorkflow(id, workflowDto, {
+      jobStatus: JobStatus.Scheduled,
+      workflowStatus: SalesmanWorkflowStatus.Travelling,
+      userStatus: 'On the way',
+      timestamps: { travelStartedAt: now },
+    });
+  }
+
+  async startSalesmanMeasuring(
+    id: string,
+    workflowDto: SalesmanWorkflowDto,
+  ): Promise<JobDocument> {
+    const now = new Date();
+    return this.applySalesmanWorkflow(id, workflowDto, {
+      jobStatus: JobStatus.InProgress,
+      workflowStatus: SalesmanWorkflowStatus.Measuring,
+      userStatus: 'In progress',
+      timestamps: { measurementStartedAt: now, timerStartedAt: now },
+    });
+  }
+
+  async completeSalesmanWorkflow(
+    id: string,
+    workflowDto: SalesmanWorkflowDto,
+  ): Promise<JobDocument> {
+    const now = new Date();
+    return this.applySalesmanWorkflow(id, workflowDto, {
+      jobStatus: JobStatus.Completed,
+      workflowStatus: SalesmanWorkflowStatus.Completed,
+      userStatus: 'Available',
+      timestamps: { measurementCompletedAt: now },
+    });
+  }
+
+  private async applySalesmanWorkflow(
+    id: string,
+    workflowDto: SalesmanWorkflowDto,
+    state: {
+      jobStatus: JobStatus;
+      workflowStatus: SalesmanWorkflowStatus;
+      userStatus: 'Available' | 'On the way' | 'In progress';
+      timestamps: Record<string, Date>;
+    },
+  ): Promise<JobDocument> {
+    const currentJob = await this.findByMongoIdOrJobId(id);
+    if (!currentJob) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    const salesmanId =
+      workflowDto.salesmanId ||
+      currentJob.activeSalesmanId ||
+      currentJob.assignedSalesman ||
+      currentJob.assignedTo;
+    const salesmanName =
+      workflowDto.salesmanName ||
+      currentJob.activeSalesmanName ||
+      currentJob.assignedTo;
+
+    const updatedJob = await this.jobModel
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        {
+          status: state.jobStatus,
+          salesmanWorkflowStatus: state.workflowStatus,
+          activeSalesmanId: salesmanId,
+          activeSalesmanName: salesmanName,
+          ...(salesmanId ? { assignedSalesman: salesmanId } : {}),
+          ...(workflowDto.notes !== undefined ? { notes: workflowDto.notes } : {}),
+          ...state.timestamps,
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updatedJob) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    if (salesmanId) {
+      await this.userModel
+        .findByIdAndUpdate(
+          salesmanId,
+          { liveStatus: state.userStatus },
+          { runValidators: true },
+        )
+        .exec();
+    }
+
+    return updatedJob;
+  }
+
   async remove(id: string) {
-    const deletedJob = await this.jobModel.findOneAndDelete(this.getIdentifierFilter(id)).exec();
+    const deletedJob = await this.jobModel
+      .findOneAndDelete(this.getIdentifierFilter(id))
+      .exec();
     if (!deletedJob) {
       throw new NotFoundException(`Job with id ${id} was not found`);
     }
