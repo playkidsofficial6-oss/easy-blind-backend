@@ -96,7 +96,7 @@ export class Job {
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
   firstName: string;
 
-  @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
+  @Prop({ required: false, trim: true, maxlength: 60 })
   lastName: string;
 
   @Prop({ required: false, lowercase: true, trim: true })
