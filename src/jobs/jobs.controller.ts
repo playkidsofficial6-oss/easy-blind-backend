@@ -20,6 +20,7 @@ import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
+import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
 import { JobsService } from './jobs.service';
 
 @ApiTags('jobs')
@@ -56,6 +57,40 @@ export class JobsController {
     @Body() updateJobDto: UpdateJobDto,
   ) {
     return this.jobsService.update(id, updateJobDto);
+  }
+
+  @Patch(':id/salesman-travel')
+  @ApiOperation({
+    summary: 'Mark an assigned salesman as travelling to this job',
+  })
+  @ApiOkResponse({ description: 'Salesman workflow changed to travelling.' })
+  startSalesmanTravel(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: SalesmanWorkflowDto,
+  ) {
+    return this.jobsService.startSalesmanTravel(id, workflowDto);
+  }
+
+  @Patch(':id/salesman-measuring')
+  @ApiOperation({ summary: 'Mark an assigned salesman as measuring this job' })
+  @ApiOkResponse({ description: 'Salesman workflow changed to measuring.' })
+  startSalesmanMeasuring(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: SalesmanWorkflowDto,
+  ) {
+    return this.jobsService.startSalesmanMeasuring(id, workflowDto);
+  }
+
+  @Patch(':id/salesman-complete')
+  @ApiOperation({
+    summary: 'Complete the salesman measurement workflow for this job',
+  })
+  @ApiOkResponse({ description: 'Salesman workflow completed.' })
+  completeSalesmanWorkflow(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: SalesmanWorkflowDto,
+  ) {
+    return this.jobsService.completeSalesmanWorkflow(id, workflowDto);
   }
 
   @Delete(':id')

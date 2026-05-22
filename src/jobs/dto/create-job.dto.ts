@@ -12,7 +12,11 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { JobPriority, JobStatus } from '../schemas/job.schema';
+import {
+  JobPriority,
+  JobStatus,
+  SalesmanWorkflowStatus,
+} from '../schemas/job.schema';
 
 export class CreateJobDto {
   @ApiProperty({ example: 'Aarav' })
@@ -107,6 +111,39 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   assignedSalesman?: string;
+
+  @ApiPropertyOptional({
+    enum: SalesmanWorkflowStatus,
+    default: SalesmanWorkflowStatus.NotStarted,
+  })
+  @IsOptional()
+  @IsEnum(SalesmanWorkflowStatus)
+  salesmanWorkflowStatus?: SalesmanWorkflowStatus;
+
+  @ApiPropertyOptional({ example: 'user_id_of_salesman' })
+  @IsOptional()
+  @IsString()
+  activeSalesmanId?: string;
+
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsOptional()
+  @IsString()
+  activeSalesmanName?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  travelStartedAt?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  measurementStartedAt?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  measurementCompletedAt?: string;
 
   @ApiPropertyOptional({ example: 'user_id_of_fitter' })
   @IsOptional()
