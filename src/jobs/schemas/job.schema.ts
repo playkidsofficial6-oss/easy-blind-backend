@@ -93,6 +93,9 @@ export class GeoLocation {
 
 @Schema({ timestamps: true, versionKey: false })
 export class Job {
+  @Prop({ required: false, immutable: true, trim: true, match: /^EB-\d{6}$/ })
+  jobId?: string;
+
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
   firstName: string;
 
@@ -163,6 +166,7 @@ JobSchema.virtual('customerName').get(function () {
 JobSchema.set('toJSON', { virtuals: true });
 JobSchema.set('toObject', { virtuals: true });
 
+JobSchema.index({ jobId: 1 }, { unique: true, sparse: true });
 JobSchema.index({ customerEmail: 1 });
 JobSchema.index({ status: 1, scheduledAt: 1 });
 JobSchema.index({ createdAt: -1 });
