@@ -88,6 +88,7 @@ export class LiveLocationGateway
 
       this.disconnectDuplicateSocket(authUser.userId, client.id);
       this.activeSocketsByUserId.set(authUser.userId, client.id);
+      await client.join(`user:${authUser.userId}`);
 
       if (this.canReceiveAll(authUser.role)) {
         await client.join(MANAGER_ROOM);
@@ -254,11 +255,11 @@ export class LiveLocationGateway
   }
 
   private canReceiveAll(role: UserRole): boolean {
-    return [UserRole.Owner, UserRole.SalesManager].includes(role);
+    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(role);
   }
 
   private canShareLocation(role: UserRole): boolean {
-    return [UserRole.Salesman, UserRole.Fitter].includes(role);
+    return [UserRole.Salesman, UserRole.Fitter, UserRole.Field].includes(role);
   }
 
   private getErrorMessage(error: unknown): string {

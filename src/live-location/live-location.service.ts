@@ -192,9 +192,9 @@ export class LiveLocationService {
   }
 
   private assertCanAccessAll(authUser: JwtAuthenticatedUser): void {
-    if (![UserRole.Owner, UserRole.SalesManager].includes(authUser.role)) {
+    if (![UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(authUser.role)) {
       throw new ForbiddenException(
-        'Only owner and sales manager users can access all live locations',
+        'Only owner, sales manager, and admin users can access all live locations',
       );
     }
   }
@@ -219,7 +219,7 @@ export class LiveLocationService {
   }
 
   private toTrackingRole(role: UserRole): LiveLocationRole | null {
-    if (role === UserRole.Salesman) {
+    if (role === UserRole.Salesman || role === UserRole.Field) {
       return LiveLocationRole.Salesman;
     }
 

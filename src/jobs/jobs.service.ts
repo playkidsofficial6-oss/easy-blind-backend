@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, OnModuleInit, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -14,6 +14,7 @@ import {
 } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { LiveLocationGateway } from '../live-location/live-location.gateway';
 
 const JOB_ID_PREFIX = 'JOB';
 const JOB_ID_SEQUENCE_WIDTH = 4;
@@ -26,6 +27,8 @@ export class JobsService implements OnModuleInit {
     @InjectModel(JobCounter.name)
     private readonly jobCounterModel: Model<JobCounterDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @Inject(forwardRef(() => LiveLocationGateway))
+    private readonly liveLocationGateway: LiveLocationGateway,
   ) {}
 
   async onModuleInit() {
@@ -246,6 +249,49 @@ export class JobsService implements OnModuleInit {
     console.log('[Geocoder] Location backfill completed.');
   }
 
+  private async findUserByAssignment(assignedTo?: string): Promise<UserDocument | null> {
+    if (!assignedTo) return null;
+    return this.userModel
+      .findOne({
+        $or: [
+          ...(isValidObjectId(assignedTo) ? [{ _id: assignedTo }] : []),
+          { name: assignedTo },
+          { email: assignedTo },
+        ],
+      })
+      .exec();
+  }
+
+  private async notifySalesmanJobAssignment(job: JobDocument, oldSalesmanUserId?: string) {
+    try {
+      const assignedTo = job.assignedSalesman || job.assignedTo;
+      if (assignedTo) {
+        const user = await this.findUserByAssignment(assignedTo);
+        if (user) {
+          this.liveLocationGateway.server
+            .to(`user:${user._id}`)
+            .emit('job:assigned', job.toJSON());
+          console.log(`[Socket] Emitted job:assigned to user:${user._id} for job ${job.jobId}`);
+        }
+      }
+
+      if (oldSalesmanUserId) {
+        const currentSalesmanUser = assignedTo ? await this.findUserByAssignment(assignedTo) : null;
+        if (!currentSalesmanUser || currentSalesmanUser._id.toString() !== oldSalesmanUserId) {
+          const unassignedJobCopy = job.toJSON();
+          unassignedJobCopy.assignedTo = '';
+          unassignedJobCopy.assignedSalesman = '';
+          this.liveLocationGateway.server
+            .to(`user:${oldSalesmanUserId}`)
+            .emit('job:assigned', unassignedJobCopy);
+          console.log(`[Socket] Emitted job:assigned unassignment to user:${oldSalesmanUserId} for job ${job.jobId}`);
+        }
+      }
+    } catch (err) {
+      console.error('[Socket] Failed to emit job assignment notification:', err);
+    }
+  }
+
   async create(createJobDto: CreateJobDto): Promise<JobDocument> {
     const coordinates = await geocodeAddress(createJobDto.address);
     const jobId = await this.generateNextJobId();
@@ -260,7 +306,11 @@ export class JobsService implements OnModuleInit {
         ? new Date(createJobDto.scheduledAt)
         : undefined,
     });
-    return createdJob.save();
+    const savedJob = await createdJob.save();
+    this.notifySalesmanJobAssignment(savedJob).catch((err) => {
+      console.error('[Socket] Failed to run notifySalesmanJobAssignment async:', err);
+    });
+    return savedJob;
   }
 
   async findAll(query: QueryJobsDto) {
@@ -299,6 +349,18 @@ export class JobsService implements OnModuleInit {
   }
 
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobDocument> {
+    const currentJob = await this.findByMongoIdOrJobId(id);
+    let oldSalesmanUserId: string | undefined;
+    if (currentJob) {
+      const assignedTo = currentJob.assignedSalesman || currentJob.assignedTo;
+      if (assignedTo) {
+        const oldUser = await this.findUserByAssignment(assignedTo);
+        if (oldUser) {
+          oldSalesmanUserId = oldUser._id.toString();
+        }
+      }
+    }
+
     const { jobId: _jobId, ...safeUpdateDto } = updateJobDto as UpdateJobDto & {
       jobId?: string;
     };
@@ -345,6 +407,11 @@ export class JobsService implements OnModuleInit {
     if (!updatedJob) {
       throw new NotFoundException(`Job with id ${id} was not found`);
     }
+
+    this.notifySalesmanJobAssignment(updatedJob, oldSalesmanUserId).catch((err) => {
+      console.error('[Socket] Failed to run notifySalesmanJobAssignment async on update:', err);
+    });
+
     return updatedJob;
   }
 
@@ -440,6 +507,18 @@ export class JobsService implements OnModuleInit {
           { runValidators: true },
         )
         .exec();
+
+      try {
+        this.liveLocationGateway.server.to('live-location:managers').emit('salesman:status-changed', {
+          userId: salesmanId,
+          status: state.userStatus,
+          role: 'Salesman',
+          jobId: id,
+        });
+        console.log(`[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> ${state.userStatus}`);
+      } catch (err) {
+        console.error('[Socket] Failed to emit salesman:status-changed:', err);
+      }
     }
 
     return updatedJob;
