@@ -24,6 +24,7 @@ export interface LiveLocationResponse {
   _id: string;
   userId: string;
   role: LiveLocationRole;
+  liveStatus?: string;
   location: {
     type: 'Point';
     coordinates: [number, number];
@@ -70,7 +71,8 @@ export class LiveLocationService {
     }
 
     const userObjectId = new Types.ObjectId(authUser.userId);
-    const payload: LiveLocationUpdatePayload = {
+    const isOnline = updateLiveLocationDto.isOnline ?? true;
+    const payload: any = {
       userId: userObjectId,
       role: trackingRole,
 
@@ -81,9 +83,13 @@ export class LiveLocationService {
       accuracy: updateLiveLocationDto.accuracy,
       speed: updateLiveLocationDto.speed,
       heading: updateLiveLocationDto.heading,
-      isOnline: updateLiveLocationDto.isOnline ?? true,
+      isOnline,
       lastUpdatedAt: new Date(),
     };
+
+    if (!isOnline) {
+      payload.liveStatus = 'Offline';
+    }
 
     const updatedLocation = await this.liveLocationModel
       .findOneAndUpdate(
@@ -124,6 +130,7 @@ export class LiveLocationService {
           $set: {
             role: trackingRole,
             isOnline,
+            liveStatus: isOnline ? 'Available' : 'Offline',
             lastUpdatedAt: new Date(),
           },
         },
@@ -192,9 +199,9 @@ export class LiveLocationService {
   }
 
   private assertCanAccessAll(authUser: JwtAuthenticatedUser): void {
-    if (![UserRole.Owner, UserRole.SalesManager].includes(authUser.role)) {
+    if (![UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(authUser.role)) {
       throw new ForbiddenException(
-        'Only owner and sales manager users can access all live locations',
+        'Only owner, sales manager, and admin users can access all live locations',
       );
     }
   }
@@ -219,7 +226,7 @@ export class LiveLocationService {
   }
 
   private toTrackingRole(role: UserRole): LiveLocationRole | null {
-    if (role === UserRole.Salesman) {
+    if (role === UserRole.Salesman || role === UserRole.Field) {
       return LiveLocationRole.Salesman;
     }
 
@@ -237,6 +244,7 @@ export class LiveLocationService {
       _id: plainLocation._id?.toString(),
       userId: plainLocation.userId?.toString(),
       role: plainLocation.role,
+      liveStatus: (plainLocation as any).liveStatus,
       location: plainLocation.location,
       accuracy: plainLocation.accuracy,
       speed: plainLocation.speed,
@@ -246,6 +254,18 @@ export class LiveLocationService {
       createdAt: plainLocation.createdAt,
       updatedAt: plainLocation.updatedAt,
     };
+  }
+
+  async updateLiveStatus(
+    userId: string,
+    liveStatus: string,
+  ): Promise<void> {
+    await this.liveLocationModel
+      .findOneAndUpdate(
+        { userId: new Types.ObjectId(userId) },
+        { $set: { liveStatus, lastUpdatedAt: new Date() } },
+      )
+      .exec();
   }
 
   private success<T>(message: string, data: T): ApiResponse<T> {

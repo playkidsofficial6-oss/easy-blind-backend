@@ -33,6 +33,8 @@ type AuthenticatedSocket = Socket & {
 interface LiveLocationSocketEvent {
   userId: string;
   role: string;
+  liveStatus?: string;
+  status?: string;
   location: {
     type: 'Point';
     coordinates: [number, number];
@@ -88,6 +90,7 @@ export class LiveLocationGateway
 
       this.disconnectDuplicateSocket(authUser.userId, client.id);
       this.activeSocketsByUserId.set(authUser.userId, client.id);
+      await client.join(`user:${authUser.userId}`);
 
       if (this.canReceiveAll(authUser.role)) {
         await client.join(MANAGER_ROOM);
@@ -95,8 +98,15 @@ export class LiveLocationGateway
 
       if (this.canShareLocation(authUser.role)) {
         await this.liveLocationService.setOnlineStatus(authUser, true);
+        await this.usersService.update(authUser.userId, { liveStatus: 'Available' as any });
         this.broadcastUserPresence(authUser, true);
       }
+
+      console.log(
+        `✅ Socket connected: ${authUser.userId}`,
+        `role: ${authUser.role}`,
+        `managers room: ${this.canReceiveAll(authUser.role)}`,
+      );
     } catch (error) {
       this.logger.warn(
         `Rejected live-location socket ${client.id}: ${this.getErrorMessage(error)}`,
@@ -124,6 +134,7 @@ export class LiveLocationGateway
     if (this.canShareLocation(authUser.role)) {
       try {
         await this.liveLocationService.setOnlineStatus(authUser, false);
+        await this.usersService.update(authUser.userId, { liveStatus: 'Offline' as any });
         this.broadcastUserPresence(authUser, false);
       } catch (error) {
         this.logger.error(
@@ -158,13 +169,42 @@ export class LiveLocationGateway
 
     this.broadcastLocationUpdated(response.data);
 
+    console.log(
+      `📍 location:update from: ${authUser.userId}`,
+      updateLiveLocationDto.location.coordinates,
+    );
+
     return response;
+  }
+
+  @SubscribeMessage('job:updated')
+  handleJobUpdated(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: any,
+  ) {
+    this.server.to(MANAGER_ROOM).emit('job:updated', payload);
+    if (payload.assignedTo) {
+      this.server.to(`user:${payload.assignedTo}`).emit('job:updated', payload);
+    }
+  }
+
+  @SubscribeMessage('job:deleted')
+  handleJobDeleted(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: any,
+  ) {
+    this.server.to(MANAGER_ROOM).emit('job:deleted', payload);
+    if (payload.assignedTo) {
+      this.server.to(`user:${payload.assignedTo}`).emit('job:deleted', payload);
+    }
   }
 
   broadcastLocationUpdated(location: LiveLocationResponse): void {
     this.server.to(MANAGER_ROOM).emit('location:updated', {
       userId: location.userId,
       role: location.role,
+      liveStatus: location.liveStatus,
+      status: location.liveStatus,
       location: location.location,
       latitude: location.location.coordinates[1],
       longitude: location.location.coordinates[0],
@@ -174,6 +214,12 @@ export class LiveLocationGateway
       isOnline: location.isOnline,
       lastUpdatedAt: location.lastUpdatedAt,
     } satisfies LiveLocationSocketEvent);
+
+    console.log(
+      `📡 Broadcasting to managers:`,
+      location.userId,
+      `liveStatus: ${location.liveStatus}`,
+    );
   }
 
   private broadcastUserPresence(
@@ -254,11 +300,11 @@ export class LiveLocationGateway
   }
 
   private canReceiveAll(role: UserRole): boolean {
-    return [UserRole.Owner, UserRole.SalesManager].includes(role);
+    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(role);
   }
 
   private canShareLocation(role: UserRole): boolean {
-    return [UserRole.Salesman, UserRole.Fitter].includes(role);
+    return [UserRole.Salesman, UserRole.Fitter, UserRole.Field].includes(role);
   }
 
   private getErrorMessage(error: unknown): string {
