@@ -15,6 +15,7 @@ import {
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { LiveLocationGateway } from '../live-location/live-location.gateway';
+import { LiveLocationService } from '../live-location/live-location.service';
 
 const JOB_ID_PREFIX = 'JOB';
 const JOB_ID_SEQUENCE_WIDTH = 4;
@@ -29,6 +30,8 @@ export class JobsService implements OnModuleInit {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @Inject(forwardRef(() => LiveLocationGateway))
     private readonly liveLocationGateway: LiveLocationGateway,
+    @Inject(forwardRef(() => LiveLocationService))
+    private readonly liveLocationService: LiveLocationService,
   ) {}
 
   async onModuleInit() {
@@ -293,7 +296,7 @@ export class JobsService implements OnModuleInit {
   }
 
   async create(createJobDto: CreateJobDto): Promise<JobDocument> {
-    const coordinates = await geocodeAddress(createJobDto.address);
+    const coordinates = createJobDto.location?.coordinates || await geocodeAddress(createJobDto.address);
     const jobId = await this.generateNextJobId();
     const createdJob = new this.jobModel({
       ...createJobDto,
@@ -365,7 +368,7 @@ export class JobsService implements OnModuleInit {
       jobId?: string;
     };
     let locationUpdate = {};
-    if (safeUpdateDto.address) {
+    if (safeUpdateDto.address && !safeUpdateDto.location) {
       const coordinates = await geocodeAddress(safeUpdateDto.address);
       locationUpdate = {
         location: {
@@ -507,6 +510,17 @@ export class JobsService implements OnModuleInit {
           { runValidators: true },
         )
         .exec();
+
+      await this.liveLocationService.updateLiveStatus(
+        salesmanId,
+        state.userStatus,
+      );
+
+      console.log(
+        `🚗 Emitting salesman:status-changed`,
+        `userId: ${salesmanId}`,
+        `status: ${state.userStatus}`,
+      );
 
       try {
         this.liveLocationGateway.server.to('live-location:managers').emit('salesman:status-changed', {

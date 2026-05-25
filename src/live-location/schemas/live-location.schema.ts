@@ -20,6 +20,9 @@ export class LiveLocation {
   @Prop({ enum: LiveLocationRole, required: true, index: true })
   role: LiveLocationRole;
 
+  @Prop({ type: String, default: 'Available' })
+  liveStatus: string;
+
 
 
   @Prop({

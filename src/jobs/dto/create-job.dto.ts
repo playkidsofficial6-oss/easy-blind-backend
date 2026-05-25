@@ -154,4 +154,11 @@ export class CreateJobDto {
   @ApiPropertyOptional()
   @IsOptional()
   quotation?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
 }
