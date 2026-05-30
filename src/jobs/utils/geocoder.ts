@@ -19,8 +19,24 @@ function httpsGet(url: string): Promise<string> {
 function getFallbackCoordinates(address: string): [number, number] {
   const normalized = address.toLowerCase();
   
-  // Known coordinates for common UAE spots
+  // Known coordinates for common UAE and Kerala/Malappuram spots.
+  // Coordinates are stored in GeoJSON order: [longitude, latitude].
   const db: Record<string, [number, number]> = {
+    'perinthalmanna': [76.2260, 10.9765],
+    'malappuram': [76.0711, 11.0510],
+    'manjeri': [76.1197, 11.1202],
+    'nilambur': [76.2389, 11.2794],
+    'tirur': [75.9221, 10.9146],
+    'kottakkal': [76.0058, 10.9996],
+    'kondotty': [75.9656, 11.1444],
+    'karipur': [75.9553, 11.1368],
+    'edappal': [76.0106, 10.7847],
+    'ponnani': [75.9259, 10.7677],
+    'valanchery': [76.0730, 10.8892],
+    'vengara': [75.9894, 11.0516],
+    'chemmad': [75.9367, 11.0437],
+    'areekode': [76.0504, 11.2302],
+    'kerala': [76.2711, 10.8505],
     'marina': [55.1403, 25.0784],
     'jbr': [55.1328, 25.0763],
     'downtown': [55.2744, 25.1972],
@@ -55,17 +71,19 @@ function getFallbackCoordinates(address: string): [number, number] {
     }
   }
 
-  // Generic fallback: Generate deterministic coords within Dubai based on the hash of the address
+  const keralaIndicators = ['kerala', 'india', 'malappuram', 'perinthalmanna', 'manjeri', 'nilambur', 'tirur', 'kottakkal', 'kondotty'];
+  const useKeralaFallback = keralaIndicators.some((term) => normalized.includes(term));
+
+  // Generic fallback: Generate deterministic coords within the detected operating region based on the hash of the address.
   let hash = 0;
   for (let i = 0; i < address.length; i++) {
     hash = address.charCodeAt(i) + ((hash << 5) - hash);
   }
   
-  // Bounding box for Dubai: Lat 25.05 to 25.25, Lng 55.12 to 55.38
-  const latMin = 25.05;
-  const latMax = 25.25;
-  const lngMin = 55.12;
-  const lngMax = 55.38;
+  const latMin = useKeralaFallback ? 10.68 : 25.05;
+  const latMax = useKeralaFallback ? 11.62 : 25.25;
+  const lngMin = useKeralaFallback ? 75.75 : 55.12;
+  const lngMax = useKeralaFallback ? 76.58 : 55.38;
 
   const latRange = latMax - latMin;
   const lngRange = lngMax - lngMin;
