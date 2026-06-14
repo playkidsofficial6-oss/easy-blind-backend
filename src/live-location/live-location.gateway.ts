@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Namespace, Server, Socket } from 'socket.io';
+import { Namespace, Socket } from 'socket.io';
 import {
   JwtAuthenticatedUser,
   JwtPayload,
@@ -24,11 +24,12 @@ import {
   LiveLocationService,
 } from './live-location.service';
 
-type AuthenticatedSocket = Socket & {
-  data: {
-    user?: JwtAuthenticatedUser;
-  };
-};
+type AuthenticatedSocket = Socket<
+  Record<string, unknown>,
+  Record<string, unknown>,
+  Record<string, unknown>,
+  { user?: JwtAuthenticatedUser }
+>;
 
 interface LiveLocationSocketEvent {
   userId: string;
@@ -98,7 +99,9 @@ export class LiveLocationGateway
 
       if (this.canShareLocation(authUser.role)) {
         await this.liveLocationService.setOnlineStatus(authUser, true);
-        await this.usersService.update(authUser.userId, { liveStatus: 'Available' as any });
+        await this.usersService.update(authUser.userId, {
+          liveStatus: 'Available',
+        });
         this.broadcastUserPresence(authUser, true);
       }
 
@@ -134,7 +137,9 @@ export class LiveLocationGateway
     if (this.canShareLocation(authUser.role)) {
       try {
         await this.liveLocationService.setOnlineStatus(authUser, false);
-        await this.usersService.update(authUser.userId, { liveStatus: 'Offline' as any });
+        await this.usersService.update(authUser.userId, {
+          liveStatus: 'Offline',
+        });
         this.broadcastUserPresence(authUser, false);
       } catch (error) {
         this.logger.error(
@@ -180,7 +185,7 @@ export class LiveLocationGateway
   @SubscribeMessage('job:updated')
   handleJobUpdated(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:updated', payload);
     if (payload.assignedTo) {
@@ -191,7 +196,7 @@ export class LiveLocationGateway
   @SubscribeMessage('job:deleted')
   handleJobDeleted(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:deleted', payload);
     if (payload.assignedTo) {
@@ -300,7 +305,9 @@ export class LiveLocationGateway
   }
 
   private canReceiveAll(role: UserRole): boolean {
-    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(role);
+    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(
+      role,
+    );
   }
 
   private canShareLocation(role: UserRole): boolean {

@@ -97,7 +97,12 @@ export class Measurement {
   @Prop({ required: true })
   visitDate: Date;
 
-  @Prop({ required: true, enum: MeasurementStatus, default: MeasurementStatus.PENDING, index: true })
+  @Prop({
+    required: true,
+    enum: MeasurementStatus,
+    default: MeasurementStatus.PENDING,
+    index: true,
+  })
   status: MeasurementStatus;
 
   @Prop({ type: [RoomSchema], default: [] })

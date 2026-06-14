@@ -100,7 +100,12 @@ export class GeoLocation {
 
 @Schema({ timestamps: true, versionKey: false })
 export class Job {
-  @Prop({ required: false, immutable: true, trim: true, match: /^JOB-\d{4}-\d{4}$/ })
+  @Prop({
+    required: false,
+    immutable: true,
+    trim: true,
+    match: /^JOB-\d{4}-\d{4}$/,
+  })
   jobId?: string;
 
   @Prop({ required: true, trim: true, minlength: 2, maxlength: 60 })
