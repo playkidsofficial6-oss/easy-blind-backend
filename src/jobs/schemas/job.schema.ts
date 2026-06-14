@@ -188,6 +188,12 @@ export class Job {
   @Prop({ type: Quotation })
   quotation?: Quotation;
 
+  @Prop({ type: Object, required: false })
+  rescheduleRequest?: {
+    status: 'pending' | 'resolved';
+    requestedAt: Date;
+  };
+
   @Prop()
   timerStartedAt?: Date;
 }

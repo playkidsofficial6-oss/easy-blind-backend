@@ -160,4 +160,11 @@ export class CreateJobDto {
     type: string;
     coordinates: number[];
   };
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  rescheduleRequest?: {
+    status: 'pending' | 'resolved';
+    requestedAt: string;
+  };
 }
