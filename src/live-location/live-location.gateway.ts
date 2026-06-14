@@ -24,10 +24,31 @@ import {
   LiveLocationService,
 } from './live-location.service';
 
+interface ClientToServerEvents {
+  'location:update': (payload: UpdateLiveLocationDto) => void;
+  'job:updated': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
+  'job:deleted': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
+}
+
+interface ServerToClientEvents {
+  error: (payload: { message: string }) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:updated': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:deleted': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:assigned': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'salesman:status-changed': (payload: any) => void;
+  'location:updated': (payload: LiveLocationSocketEvent) => void;
+  'user:online': (payload: LiveLocationPresenceEvent) => void;
+  'user:offline': (payload: LiveLocationPresenceEvent) => void;
+}
+
 type AuthenticatedSocket = Socket<
-  Record<string, unknown>,
-  Record<string, unknown>,
-  Record<string, unknown>,
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
   { user?: JwtAuthenticatedUser }
 >;
 
@@ -73,7 +94,12 @@ export class LiveLocationGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Namespace;
+  server: Namespace<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    Record<string, never>,
+    { user?: JwtAuthenticatedUser }
+  >;
 
   private readonly logger = new Logger(LiveLocationGateway.name);
   private readonly activeSocketsByUserId = new Map<string, string>();

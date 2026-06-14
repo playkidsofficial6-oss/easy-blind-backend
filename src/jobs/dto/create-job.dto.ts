@@ -6,7 +6,6 @@ import {
   IsInt,
   IsNumber,
   IsOptional,
-  IsPhoneNumber,
   IsString,
   MaxLength,
   Min,
@@ -37,7 +36,7 @@ export class CreateJobDto {
   customerEmail?: string;
 
   @ApiProperty({ example: '+919876543210' })
-  @IsPhoneNumber()
+  @IsString()
   @IsOptional()
   customerPhone?: string;
 
