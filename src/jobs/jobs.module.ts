@@ -21,4 +21,3 @@ import { LiveLocationModule } from '../live-location/live-location.module';
   exports: [JobsService],
 })
 export class JobsModule {}
-

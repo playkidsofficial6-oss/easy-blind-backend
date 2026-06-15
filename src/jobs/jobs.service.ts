@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, OnModuleInit, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -34,7 +40,7 @@ export class JobsService implements OnModuleInit {
     private readonly liveLocationService: LiveLocationService,
   ) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     this.backfillJobIds().catch((err) => {
       console.error('Error in job ID backfill:', err);
     });
@@ -174,7 +180,7 @@ export class JobsService implements OnModuleInit {
           .exec();
       } catch (err) {
         console.error(
-          `[Backfill] Failed Job ID backfill for job ${job._id}:`,
+          `[Backfill] Failed Job ID backfill for job ${String(job._id)}:`,
           err,
         );
       }
@@ -185,7 +191,10 @@ export class JobsService implements OnModuleInit {
   private async backfillNames() {
     const jobsToBackfill = await this.jobModel
       .find({
-        $or: [{ firstName: { $exists: false } }, { lastName: { $exists: false } }],
+        $or: [
+          { firstName: { $exists: false } },
+          { lastName: { $exists: false } },
+        ],
       })
       .exec();
 
@@ -208,7 +217,10 @@ export class JobsService implements OnModuleInit {
           .updateOne({ _id: job._id }, { $set: { firstName, lastName } })
           .exec();
       } catch (err) {
-        console.error(`[Backfill] Failed name backfill for job ${job._id}:`, err);
+        console.error(
+          `[Backfill] Failed name backfill for job ${String(job._id)}:`,
+          err,
+        );
       }
     }
     console.log('[Backfill] Name backfill completed.');
@@ -246,13 +258,18 @@ export class JobsService implements OnModuleInit {
         await new Promise((resolve) => setTimeout(resolve, 250));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        console.error(`[Geocoder] Failed backfill for job ${job._id}:`, message);
+        console.error(
+          `[Geocoder] Failed backfill for job ${String(job._id)}:`,
+          message,
+        );
       }
     }
     console.log('[Geocoder] Location backfill completed.');
   }
 
-  private async findUserByAssignment(assignedTo?: string): Promise<UserDocument | null> {
+  private async findUserByAssignment(
+    assignedTo?: string,
+  ): Promise<UserDocument | null> {
     if (!assignedTo) return null;
     return this.userModel
       .findOne({
@@ -265,38 +282,55 @@ export class JobsService implements OnModuleInit {
       .exec();
   }
 
-  private async notifySalesmanJobAssignment(job: JobDocument, oldSalesmanUserId?: string) {
+  private async notifySalesmanJobAssignment(
+    job: JobDocument,
+    oldSalesmanUserId?: string,
+  ) {
     try {
       const assignedTo = job.assignedSalesman || job.assignedTo;
       if (assignedTo) {
         const user = await this.findUserByAssignment(assignedTo);
         if (user) {
           this.liveLocationGateway.server
-            .to(`user:${user._id}`)
+            .to(`user:${String(user._id)}`)
             .emit('job:assigned', job.toJSON());
-          console.log(`[Socket] Emitted job:assigned to user:${user._id} for job ${job.jobId}`);
+          console.log(
+            `[Socket] Emitted job:assigned to user:${String(user._id)} for job ${job.jobId}`,
+          );
         }
       }
 
       if (oldSalesmanUserId) {
-        const currentSalesmanUser = assignedTo ? await this.findUserByAssignment(assignedTo) : null;
-        if (!currentSalesmanUser || currentSalesmanUser._id.toString() !== oldSalesmanUserId) {
+        const currentSalesmanUser = assignedTo
+          ? await this.findUserByAssignment(assignedTo)
+          : null;
+        if (
+          !currentSalesmanUser ||
+          currentSalesmanUser._id.toString() !== oldSalesmanUserId
+        ) {
           const unassignedJobCopy = job.toJSON();
           unassignedJobCopy.assignedTo = '';
           unassignedJobCopy.assignedSalesman = '';
           this.liveLocationGateway.server
             .to(`user:${oldSalesmanUserId}`)
             .emit('job:assigned', unassignedJobCopy);
-          console.log(`[Socket] Emitted job:assigned unassignment to user:${oldSalesmanUserId} for job ${job.jobId}`);
+          console.log(
+            `[Socket] Emitted job:assigned unassignment to user:${oldSalesmanUserId} for job ${job.jobId}`,
+          );
         }
       }
     } catch (err) {
-      console.error('[Socket] Failed to emit job assignment notification:', err);
+      console.error(
+        '[Socket] Failed to emit job assignment notification:',
+        err,
+      );
     }
   }
 
   async create(createJobDto: CreateJobDto): Promise<JobDocument> {
-    const coordinates = createJobDto.location?.coordinates || await geocodeAddress(createJobDto.address);
+    const coordinates =
+      createJobDto.location?.coordinates ||
+      (await geocodeAddress(createJobDto.address));
     const jobId = await this.generateNextJobId();
     const createdJob = new this.jobModel({
       ...createJobDto,
@@ -311,7 +345,10 @@ export class JobsService implements OnModuleInit {
     });
     const savedJob = await createdJob.save();
     this.notifySalesmanJobAssignment(savedJob).catch((err) => {
-      console.error('[Socket] Failed to run notifySalesmanJobAssignment async:', err);
+      console.error(
+        '[Socket] Failed to run notifySalesmanJobAssignment async:',
+        err,
+      );
     });
     return savedJob;
   }
@@ -364,9 +401,10 @@ export class JobsService implements OnModuleInit {
       }
     }
 
-    const { jobId: _jobId, ...safeUpdateDto } = updateJobDto as UpdateJobDto & {
+    const safeUpdateDto = { ...updateJobDto } as UpdateJobDto & {
       jobId?: string;
     };
+    delete safeUpdateDto.jobId;
     let locationUpdate = {};
     if (safeUpdateDto.address && !safeUpdateDto.location) {
       const coordinates = await geocodeAddress(safeUpdateDto.address);
@@ -411,9 +449,14 @@ export class JobsService implements OnModuleInit {
       throw new NotFoundException(`Job with id ${id} was not found`);
     }
 
-    this.notifySalesmanJobAssignment(updatedJob, oldSalesmanUserId).catch((err) => {
-      console.error('[Socket] Failed to run notifySalesmanJobAssignment async on update:', err);
-    });
+    this.notifySalesmanJobAssignment(updatedJob, oldSalesmanUserId).catch(
+      (err) => {
+        console.error(
+          '[Socket] Failed to run notifySalesmanJobAssignment async on update:',
+          err,
+        );
+      },
+    );
 
     return updatedJob;
   }
@@ -491,7 +534,9 @@ export class JobsService implements OnModuleInit {
           activeSalesmanId: salesmanId,
           activeSalesmanName: salesmanName,
           ...(salesmanId ? { assignedSalesman: salesmanId } : {}),
-          ...(workflowDto.notes !== undefined ? { notes: workflowDto.notes } : {}),
+          ...(workflowDto.notes !== undefined
+            ? { notes: workflowDto.notes }
+            : {}),
           ...state.timestamps,
         },
         { returnDocument: 'after', runValidators: true },
@@ -523,13 +568,17 @@ export class JobsService implements OnModuleInit {
       );
 
       try {
-        this.liveLocationGateway.server.to('live-location:managers').emit('salesman:status-changed', {
-          userId: salesmanId,
-          status: state.userStatus,
-          role: 'Salesman',
-          jobId: id,
-        });
-        console.log(`[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> ${state.userStatus}`);
+        this.liveLocationGateway.server
+          .to('live-location:managers')
+          .emit('salesman:status-changed', {
+            userId: salesmanId,
+            status: state.userStatus,
+            role: 'Salesman',
+            jobId: id,
+          });
+        console.log(
+          `[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> ${state.userStatus}`,
+        );
       } catch (err) {
         console.error('[Socket] Failed to emit salesman:status-changed:', err);
       }

@@ -17,7 +17,10 @@ export class MeasurementsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update an existing measurement record by ID' })
-  async update(@Param('id') id: string, @Body() updateDto: UpdateMeasurementDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateMeasurementDto,
+  ) {
     return this.measurementsService.updateMeasurement(id, updateDto);
   }
 
@@ -34,7 +37,9 @@ export class MeasurementsController {
   }
 
   @Get(':id/summary')
-  @ApiOperation({ summary: 'Retrieve a quick statistical summary of a measurement' })
+  @ApiOperation({
+    summary: 'Retrieve a quick statistical summary of a measurement',
+  })
   async getSummary(@Param('id') id: string) {
     return this.measurementsService.getMeasurementSummary(id);
   }

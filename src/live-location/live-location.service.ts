@@ -43,13 +43,8 @@ type LiveLocationPlainObject = LiveLocation & {
   userId: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
+  liveStatus?: string;
 };
-
-type LiveLocationUpdatePayload = Pick<
-  LiveLocation,
-  'userId' | 'role' | 'location' | 'lastUpdatedAt'
-> &
-  Partial<Pick<LiveLocation, 'accuracy' | 'speed' | 'heading' | 'isOnline'>>;
 
 @Injectable()
 export class LiveLocationService {
@@ -72,7 +67,7 @@ export class LiveLocationService {
 
     const userObjectId = new Types.ObjectId(authUser.userId);
     const isOnline = updateLiveLocationDto.isOnline ?? true;
-    const payload: any = {
+    const payload: Partial<LiveLocationPlainObject> = {
       userId: userObjectId,
       role: trackingRole,
 
@@ -199,7 +194,11 @@ export class LiveLocationService {
   }
 
   private assertCanAccessAll(authUser: JwtAuthenticatedUser): void {
-    if (![UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(authUser.role)) {
+    if (
+      ![UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(
+        authUser.role,
+      )
+    ) {
       throw new ForbiddenException(
         'Only owner, sales manager, and admin users can access all live locations',
       );
@@ -244,7 +243,7 @@ export class LiveLocationService {
       _id: plainLocation._id?.toString(),
       userId: plainLocation.userId?.toString(),
       role: plainLocation.role,
-      liveStatus: (plainLocation as any).liveStatus,
+      liveStatus: plainLocation.liveStatus,
       location: plainLocation.location,
       accuracy: plainLocation.accuracy,
       speed: plainLocation.speed,
@@ -256,10 +255,7 @@ export class LiveLocationService {
     };
   }
 
-  async updateLiveStatus(
-    userId: string,
-    liveStatus: string,
-  ): Promise<void> {
+  async updateLiveStatus(userId: string, liveStatus: string): Promise<void> {
     await this.liveLocationModel
       .findOneAndUpdate(
         { userId: new Types.ObjectId(userId) },

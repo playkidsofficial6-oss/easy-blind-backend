@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Namespace, Server, Socket } from 'socket.io';
+import { Namespace, Socket } from 'socket.io';
 import {
   JwtAuthenticatedUser,
   JwtPayload,
@@ -24,11 +24,33 @@ import {
   LiveLocationService,
 } from './live-location.service';
 
-type AuthenticatedSocket = Socket & {
-  data: {
-    user?: JwtAuthenticatedUser;
-  };
-};
+interface ClientToServerEvents {
+  'location:update': (payload: UpdateLiveLocationDto) => void;
+  'job:updated': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
+  'job:deleted': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
+}
+
+interface ServerToClientEvents {
+  error: (payload: { message: string }) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:updated': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:deleted': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'job:assigned': (payload: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'salesman:status-changed': (payload: any) => void;
+  'location:updated': (payload: LiveLocationSocketEvent) => void;
+  'user:online': (payload: LiveLocationPresenceEvent) => void;
+  'user:offline': (payload: LiveLocationPresenceEvent) => void;
+}
+
+type AuthenticatedSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  { user?: JwtAuthenticatedUser }
+>;
 
 interface LiveLocationSocketEvent {
   userId: string;
@@ -72,7 +94,12 @@ export class LiveLocationGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Namespace;
+  server: Namespace<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    Record<string, never>,
+    { user?: JwtAuthenticatedUser }
+  >;
 
   private readonly logger = new Logger(LiveLocationGateway.name);
   private readonly activeSocketsByUserId = new Map<string, string>();
@@ -98,7 +125,9 @@ export class LiveLocationGateway
 
       if (this.canShareLocation(authUser.role)) {
         await this.liveLocationService.setOnlineStatus(authUser, true);
-        await this.usersService.update(authUser.userId, { liveStatus: 'Available' as any });
+        await this.usersService.update(authUser.userId, {
+          liveStatus: 'Available',
+        });
         this.broadcastUserPresence(authUser, true);
       }
 
@@ -134,7 +163,9 @@ export class LiveLocationGateway
     if (this.canShareLocation(authUser.role)) {
       try {
         await this.liveLocationService.setOnlineStatus(authUser, false);
-        await this.usersService.update(authUser.userId, { liveStatus: 'Offline' as any });
+        await this.usersService.update(authUser.userId, {
+          liveStatus: 'Offline',
+        });
         this.broadcastUserPresence(authUser, false);
       } catch (error) {
         this.logger.error(
@@ -180,7 +211,7 @@ export class LiveLocationGateway
   @SubscribeMessage('job:updated')
   handleJobUpdated(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:updated', payload);
     if (payload.assignedTo) {
@@ -191,7 +222,7 @@ export class LiveLocationGateway
   @SubscribeMessage('job:deleted')
   handleJobDeleted(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: any,
+    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:deleted', payload);
     if (payload.assignedTo) {
@@ -300,7 +331,9 @@ export class LiveLocationGateway
   }
 
   private canReceiveAll(role: UserRole): boolean {
-    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(role);
+    return [UserRole.Owner, UserRole.SalesManager, UserRole.Admin].includes(
+      role,
+    );
   }
 
   private canShareLocation(role: UserRole): boolean {

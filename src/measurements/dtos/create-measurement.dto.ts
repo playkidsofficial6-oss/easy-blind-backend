@@ -116,7 +116,10 @@ export class CreateMeasurementDto {
   @IsDateString()
   visitDate: string;
 
-  @ApiPropertyOptional({ enum: MeasurementStatus, default: MeasurementStatus.PENDING })
+  @ApiPropertyOptional({
+    enum: MeasurementStatus,
+    default: MeasurementStatus.PENDING,
+  })
   @IsOptional()
   @IsEnum(MeasurementStatus)
   status?: MeasurementStatus;

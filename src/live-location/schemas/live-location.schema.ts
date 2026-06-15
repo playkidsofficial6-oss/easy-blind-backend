@@ -23,8 +23,6 @@ export class LiveLocation {
   @Prop({ type: String, default: 'Available' })
   liveStatus: string;
 
-
-
   @Prop({
     type: {
       type: String,

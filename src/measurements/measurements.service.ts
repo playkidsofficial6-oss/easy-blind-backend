@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Measurement, MeasurementDocument } from './schemas/measurement.schema';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
+import { RoomDto, OpeningDto } from './dtos/create-measurement.dto';
 
 @Injectable()
 export class MeasurementsService {
@@ -12,7 +13,9 @@ export class MeasurementsService {
     private readonly measurementModel: Model<MeasurementDocument>,
   ) {}
 
-  private processMeasurementData(dto: any) {
+  private processMeasurementData(
+    dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
+  ) {
     if (!dto.rooms) return {};
 
     const {
@@ -20,7 +23,7 @@ export class MeasurementsService {
       totalRooms,
       totalOpenings,
       totalWindows,
-      totalDoors
+      totalDoors,
     } = this.calculateSummaryAndArea(dto.rooms);
 
     return {
@@ -28,20 +31,20 @@ export class MeasurementsService {
       totalRooms,
       totalOpenings,
       totalWindows,
-      totalDoors
+      totalDoors,
     };
   }
 
-  private calculateSummaryAndArea(rooms: any[]) {
-    let totalRooms = rooms.length;
+  private calculateSummaryAndArea(rooms: RoomDto[]) {
+    const totalRooms = rooms.length;
     let totalOpenings = 0;
     let totalWindows = 0;
     let totalDoors = 0;
 
-    const processedRooms = rooms.map(room => {
-      const openings = (room.openings || []).map((opening: any) => {
+    const processedRooms = rooms.map((room) => {
+      const openings = (room.openings || []).map((opening: OpeningDto) => {
         totalOpenings++;
-        
+
         // Handle case-insensitive type matches
         const upperType = (opening.type || '').toUpperCase();
         if (upperType === 'WINDOW') totalWindows++;
@@ -54,13 +57,13 @@ export class MeasurementsService {
           type: upperType || 'WINDOW',
           area,
           images: opening.images || [],
-          metadata: opening.metadata || {}
+          metadata: opening.metadata || {},
         };
       });
 
       return {
         ...room,
-        openings
+        openings,
       };
     });
 
@@ -69,20 +72,25 @@ export class MeasurementsService {
       totalRooms,
       totalOpenings,
       totalWindows,
-      totalDoors
+      totalDoors,
     };
   }
 
-  async createMeasurement(createDto: CreateMeasurementDto): Promise<Measurement> {
+  async createMeasurement(
+    createDto: CreateMeasurementDto,
+  ): Promise<Measurement> {
     const summaryData = this.processMeasurementData(createDto);
     const newMeasurement = new this.measurementModel({
       ...createDto,
-      ...summaryData
+      ...summaryData,
     });
     return newMeasurement.save();
   }
 
-  async updateMeasurement(id: string, updateDto: UpdateMeasurementDto): Promise<Measurement> {
+  async updateMeasurement(
+    id: string,
+    updateDto: UpdateMeasurementDto,
+  ): Promise<Measurement> {
     const summaryData = this.processMeasurementData(updateDto);
     const updated = await this.measurementModel
       .findByIdAndUpdate(
@@ -90,10 +98,10 @@ export class MeasurementsService {
         {
           $set: {
             ...updateDto,
-            ...summaryData
-          }
+            ...summaryData,
+          },
         },
-        { new: true }
+        { new: true },
       )
       .exec();
 
@@ -106,7 +114,9 @@ export class MeasurementsService {
   async getMeasurementByJobId(jobId: string): Promise<Measurement> {
     const measurement = await this.measurementModel.findOne({ jobId }).exec();
     if (!measurement) {
-      throw new NotFoundException(`Measurement for Job ID "${jobId}" not found`);
+      throw new NotFoundException(
+        `Measurement for Job ID "${jobId}" not found`,
+      );
     }
     return measurement;
   }

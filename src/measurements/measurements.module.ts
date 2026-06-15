@@ -7,11 +7,11 @@ import { Measurement, MeasurementSchema } from './schemas/measurement.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Measurement.name, schema: MeasurementSchema }
-    ])
+      { name: Measurement.name, schema: MeasurementSchema },
+    ]),
   ],
   controllers: [MeasurementsController],
   providers: [MeasurementsService],
-  exports: [MeasurementsService]
+  exports: [MeasurementsService],
 })
 export class MeasurementsModule {}
