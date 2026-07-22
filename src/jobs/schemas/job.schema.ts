@@ -4,24 +4,24 @@ import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 export type JobDocument = HydratedDocument<Job>;
 
 export enum JobStatus {
-  Pending = 'pending',
-  Scheduled = 'scheduled',
-  InProgress = 'in_progress',
-  Completed = 'completed',
-  Cancelled = 'cancelled',
+  Pending = 'Pending',
+  Scheduled = 'Scheduled',
+  InProgress = 'In Progress',
+  Completed = 'Completed',
+  Cancelled = 'Cancelled',
 }
 
 export enum JobPriority {
-  Low = 'low',
-  Medium = 'medium',
-  High = 'high',
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
 }
 
 export enum SalesmanWorkflowStatus {
-  NotStarted = 'not_started',
-  Travelling = 'travelling',
-  Measuring = 'measuring',
-  Completed = 'completed',
+  NotStarted = 'Not Started',
+  Travelling = 'Travelling',
+  Measuring = 'Measuring',
+  Completed = 'Completed',
 }
 
 @Schema({ _id: false })

@@ -39,14 +39,14 @@ export class UserLocation {
 export const UserLocationSchema = SchemaFactory.createForClass(UserLocation);
 
 export enum UserRole {
-  Admin = 'admin',
-  Owner = 'owner',
-  SalesManager = 'sales_manager',
-  Salesman = 'salesman',
-  Field = 'field',
-  Fitter = 'fitter',
-  Stitching = 'stitching',
-  User = 'user',
+  Admin = 'Admin',
+  Owner = 'Owner',
+  SalesManager = 'Sales Manager',
+  Salesman = 'Salesman',
+  Field = 'Field',
+  Fitter = 'Fitter',
+  Stitching = 'Stitching',
+  User = 'User',
 }
 
 @Schema({ timestamps: true, versionKey: false })

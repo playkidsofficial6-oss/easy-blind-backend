@@ -71,7 +71,7 @@ export class FittersService {
     @InjectModel(Fitter.name)
     private readonly fitterModel: Model<FitterDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   async create(createFitterDto: CreateFitterDto): Promise<FitterResponse> {
     const user = await this.findFitterUser(createFitterDto.userId);

@@ -299,13 +299,11 @@ export class JobsService implements OnModuleInit {
       return new mongoose.Types.ObjectId(inputStr);
     }
 
-    const normalizedRole = inputStr.toLowerCase().replace(/\s+/g, '_');
     const queryFilter: Record<string, any> = {
       $or: [
         { name: { $regex: new RegExp(`^${inputStr}$`, 'i') } },
         { email: inputStr.toLowerCase() },
         { role: inputStr },
-        { role: normalizedRole },
       ],
     };
     const userByNameOrRole = await this.userModel.findOne(queryFilter).exec();
@@ -314,10 +312,7 @@ export class JobsService implements OnModuleInit {
       return userByNameOrRole._id as mongoose.Types.ObjectId;
     }
 
-    if (
-      normalizedRole.includes('sales_manager') ||
-      normalizedRole.includes('sales')
-    ) {
+    if (inputStr === UserRole.SalesManager || inputStr === UserRole.Salesman) {
       const fallbackUser = await this.userModel
         .findOne({ role: { $in: [UserRole.SalesManager, UserRole.Admin] } })
         .exec();
