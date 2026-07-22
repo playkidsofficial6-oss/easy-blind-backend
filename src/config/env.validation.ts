@@ -39,6 +39,8 @@ export function validateEnvironment(env: Environment) {
       'mongodb://127.0.0.1:27017/easy-blinds',
     ),
     JWT_SECRET: requireString(env, 'JWT_SECRET'),
-    JWT_EXPIRES_IN: env.JWT_EXPIRES_IN ?? '1d',
+    JWT_EXPIRES_IN: env.JWT_EXPIRES_IN ?? '15m',
+    JWT_REFRESH_SECRET: requireString(env, 'JWT_REFRESH_SECRET'),
+    JWT_REFRESH_EXPIRES_IN: env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   };
 }

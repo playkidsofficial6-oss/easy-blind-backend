@@ -4,16 +4,16 @@ import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 export type MeasurementDocument = HydratedDocument<Measurement>;
 
 export enum MeasurementStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
+  PENDING = 'Pending',
+  IN_PROGRESS = 'In Progress',
+  COMPLETED = 'Completed',
+  CANCELLED = 'Cancelled',
 }
 
 export enum OpeningType {
-  WINDOW = 'WINDOW',
-  DOOR = 'DOOR',
-  CUSTOM = 'CUSTOM',
+  WINDOW = 'Window',
+  DOOR = 'Door',
+  CUSTOM = 'Custom',
 }
 
 @Schema({ _id: false })

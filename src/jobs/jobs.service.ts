@@ -6,7 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { isValidObjectId, Model } from 'mongoose';
+import mongoose, { isValidObjectId, Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
 import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
@@ -19,7 +19,7 @@ import {
   SalesmanWorkflowStatus,
 } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { LiveLocationGateway } from '../live-location/live-location.gateway';
 import { LiveLocationService } from '../live-location/live-location.service';
 
@@ -38,7 +38,7 @@ export class JobsService implements OnModuleInit {
     private readonly liveLocationGateway: LiveLocationGateway,
     @Inject(forwardRef(() => LiveLocationService))
     private readonly liveLocationService: LiveLocationService,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.backfillJobIds().catch((err) => {
@@ -49,6 +49,9 @@ export class JobsService implements OnModuleInit {
     });
     this.backfillNames().catch((err) => {
       console.error('Error in job names backfill:', err);
+    });
+    this.backfillUserReferences().catch((err) => {
+      console.error('Error in user reference backfill:', err);
     });
   }
 
@@ -267,16 +270,159 @@ export class JobsService implements OnModuleInit {
     console.log('[Geocoder] Location backfill completed.');
   }
 
+  private async resolveUserObjectId(
+    input?: string | mongoose.Types.ObjectId | any,
+  ): Promise<mongoose.Types.ObjectId | undefined> {
+    if (!input) return undefined;
+
+    if (input instanceof mongoose.Types.ObjectId) {
+      return input;
+    }
+
+    if (typeof input === 'object' && input._id) {
+      if (input._id instanceof mongoose.Types.ObjectId) {
+        return input._id;
+      }
+      if (typeof input._id === 'string' && isValidObjectId(input._id)) {
+        return new mongoose.Types.ObjectId(input._id);
+      }
+    }
+
+    const inputStr = String(input).trim();
+    if (!inputStr) return undefined;
+
+    if (isValidObjectId(inputStr)) {
+      const userById = await this.userModel.findById(inputStr).exec();
+      if (userById) {
+        return userById._id as mongoose.Types.ObjectId;
+      }
+      return new mongoose.Types.ObjectId(inputStr);
+    }
+
+    const queryFilter: Record<string, any> = {
+      $or: [
+        { name: { $regex: new RegExp(`^${inputStr}$`, 'i') } },
+        { email: inputStr.toLowerCase() },
+        { role: inputStr },
+      ],
+    };
+    const userByNameOrRole = await this.userModel.findOne(queryFilter).exec();
+
+    if (userByNameOrRole) {
+      return userByNameOrRole._id as mongoose.Types.ObjectId;
+    }
+
+    if (inputStr === UserRole.SalesManager || inputStr === UserRole.Salesman) {
+      const fallbackUser = await this.userModel
+        .findOne({ role: { $in: [UserRole.SalesManager, UserRole.Admin] } })
+        .exec();
+      if (fallbackUser) return fallbackUser._id as mongoose.Types.ObjectId;
+    }
+
+    return undefined;
+  }
+
+  private async backfillUserReferences() {
+    const jobs = await this.jobModel.find().exec();
+    if (jobs.length === 0) return;
+
+    let updatedCount = 0;
+    for (const job of jobs) {
+      try {
+        const anyJob = job.toObject() as Record<string, any>;
+        const updates: Record<string, any> = {};
+
+        if (
+          anyJob.assignedTo &&
+          (typeof anyJob.assignedTo === 'string' ||
+            !(anyJob.assignedTo instanceof mongoose.Types.ObjectId))
+        ) {
+          const resolved = await this.resolveUserObjectId(anyJob.assignedTo);
+          if (resolved) updates.assignedTo = resolved;
+        }
+
+        if (
+          anyJob.assignedSalesman &&
+          (typeof anyJob.assignedSalesman === 'string' ||
+            !(anyJob.assignedSalesman instanceof mongoose.Types.ObjectId))
+        ) {
+          const resolved = await this.resolveUserObjectId(
+            anyJob.assignedSalesman,
+          );
+          if (resolved) updates.assignedSalesman = resolved;
+        }
+
+        if (
+          anyJob.assignedBy &&
+          (typeof anyJob.assignedBy === 'string' ||
+            !(anyJob.assignedBy instanceof mongoose.Types.ObjectId))
+        ) {
+          const resolved = await this.resolveUserObjectId(anyJob.assignedBy);
+          if (resolved) updates.assignedBy = resolved;
+        }
+
+        if (
+          anyJob.assignedFitter &&
+          (typeof anyJob.assignedFitter === 'string' ||
+            !(anyJob.assignedFitter instanceof mongoose.Types.ObjectId))
+        ) {
+          const resolved = await this.resolveUserObjectId(
+            anyJob.assignedFitter,
+          );
+          if (resolved) updates.assignedFitter = resolved;
+        }
+
+        if (
+          (updates.assignedSalesman || anyJob.assignedSalesman) &&
+          !anyJob.assignedTo &&
+          !updates.assignedTo
+        ) {
+          updates.assignedTo =
+            updates.assignedSalesman || anyJob.assignedSalesman;
+        } else if (
+          (updates.assignedTo || anyJob.assignedTo) &&
+          !anyJob.assignedSalesman &&
+          !updates.assignedSalesman
+        ) {
+          updates.assignedSalesman = updates.assignedTo || anyJob.assignedTo;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await this.jobModel
+            .updateOne({ _id: job._id }, { $set: updates })
+            .exec();
+          updatedCount++;
+        }
+      } catch (err) {
+        console.error(
+          `[Backfill] Failed user reference backfill for job ${String(job._id)}:`,
+          err,
+        );
+      }
+    }
+    if (updatedCount > 0) {
+      console.log(
+        `[Backfill] Converted user references to BSON ObjectIds for ${updatedCount} jobs.`,
+      );
+    }
+  }
+
   private async findUserByAssignment(
-    assignedTo?: string,
+    assignedTo?: string | mongoose.Types.ObjectId | any,
   ): Promise<UserDocument | null> {
     if (!assignedTo) return null;
+    let assignedToStr = '';
+    if (typeof assignedTo === 'object' && assignedTo._id) {
+      assignedToStr = assignedTo._id.toString();
+    } else {
+      assignedToStr = assignedTo.toString();
+    }
     return this.userModel
       .findOne({
         $or: [
-          ...(isValidObjectId(assignedTo) ? [{ _id: assignedTo }] : []),
-          { name: assignedTo },
-          { email: assignedTo },
+          ...(isValidObjectId(assignedToStr) ? [{ _id: assignedToStr }] : []),
+          { name: assignedToStr },
+          { email: assignedToStr },
         ],
       })
       .exec();
@@ -308,7 +454,7 @@ export class JobsService implements OnModuleInit {
           !currentSalesmanUser ||
           currentSalesmanUser._id.toString() !== oldSalesmanUserId
         ) {
-          const unassignedJobCopy = job.toJSON();
+          const unassignedJobCopy: Record<string, any> = job.toJSON();
           unassignedJobCopy.assignedTo = '';
           unassignedJobCopy.assignedSalesman = '';
           this.liveLocationGateway.server
@@ -332,9 +478,30 @@ export class JobsService implements OnModuleInit {
       createJobDto.location?.coordinates ||
       (await geocodeAddress(createJobDto.address));
     const jobId = await this.generateNextJobId();
+
+    const assignedTo = await this.resolveUserObjectId(createJobDto.assignedTo);
+    const assignedSalesman =
+      (await this.resolveUserObjectId(createJobDto.assignedSalesman)) ||
+      assignedTo;
+    const assignedBy = await this.resolveUserObjectId(createJobDto.assignedBy);
+    const assignedFitter = await this.resolveUserObjectId(
+      createJobDto.assignedFitter,
+    );
+    const finalAssignedTo = assignedTo || assignedSalesman;
+
+    const rawJobData = { ...createJobDto } as Record<string, any>;
+    delete rawJobData.assignedTo;
+    delete rawJobData.assignedSalesman;
+    delete rawJobData.assignedBy;
+    delete rawJobData.assignedFitter;
+
     const createdJob = new this.jobModel({
-      ...createJobDto,
+      ...rawJobData,
       jobId,
+      ...(finalAssignedTo ? { assignedTo: finalAssignedTo } : {}),
+      ...(assignedSalesman ? { assignedSalesman } : {}),
+      ...(assignedBy ? { assignedBy } : {}),
+      ...(assignedFitter ? { assignedFitter } : {}),
       location: {
         type: 'Point',
         coordinates,
@@ -350,7 +517,7 @@ export class JobsService implements OnModuleInit {
         err,
       );
     });
-    return savedJob;
+    return (await this.findOne(savedJob._id.toString())) as JobDocument;
   }
 
   async findAll(query: QueryJobsDto) {
@@ -362,6 +529,10 @@ export class JobsService implements OnModuleInit {
     const [items, total] = await Promise.all([
       this.jobModel
         .find(filter)
+        .populate('assignedTo', 'name email role phone liveStatus')
+        .populate('assignedSalesman', 'name email role phone liveStatus')
+        .populate('assignedBy', 'name email role phone liveStatus')
+        .populate('assignedFitter', 'name email role phone liveStatus')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -405,6 +576,45 @@ export class JobsService implements OnModuleInit {
       jobId?: string;
     };
     delete safeUpdateDto.jobId;
+    delete (safeUpdateDto as any).assignedTo;
+    delete (safeUpdateDto as any).assignedSalesman;
+    delete (safeUpdateDto as any).assignedBy;
+    delete (safeUpdateDto as any).assignedFitter;
+
+    const resolvedUserFields: Record<string, any> = {};
+    if (updateJobDto.assignedTo !== undefined) {
+      const resolved = await this.resolveUserObjectId(updateJobDto.assignedTo);
+      if (resolved) resolvedUserFields.assignedTo = resolved;
+    }
+    if (updateJobDto.assignedSalesman !== undefined) {
+      const resolved = await this.resolveUserObjectId(
+        updateJobDto.assignedSalesman,
+      );
+      if (resolved) resolvedUserFields.assignedSalesman = resolved;
+    }
+    if (updateJobDto.assignedBy !== undefined) {
+      const resolved = await this.resolveUserObjectId(updateJobDto.assignedBy);
+      if (resolved) resolvedUserFields.assignedBy = resolved;
+    }
+    if (updateJobDto.assignedFitter !== undefined) {
+      const resolved = await this.resolveUserObjectId(
+        updateJobDto.assignedFitter,
+      );
+      if (resolved) resolvedUserFields.assignedFitter = resolved;
+    }
+
+    if (
+      resolvedUserFields.assignedSalesman &&
+      !resolvedUserFields.assignedTo
+    ) {
+      resolvedUserFields.assignedTo = resolvedUserFields.assignedSalesman;
+    } else if (
+      resolvedUserFields.assignedTo &&
+      !resolvedUserFields.assignedSalesman
+    ) {
+      resolvedUserFields.assignedSalesman = resolvedUserFields.assignedTo;
+    }
+
     let locationUpdate = {};
     if (safeUpdateDto.address && !safeUpdateDto.location) {
       const coordinates = await geocodeAddress(safeUpdateDto.address);
@@ -434,6 +644,7 @@ export class JobsService implements OnModuleInit {
 
     const updatePayload = {
       ...safeUpdateDto,
+      ...resolvedUserFields,
       ...locationUpdate,
       ...dateUpdates,
     };
@@ -458,7 +669,7 @@ export class JobsService implements OnModuleInit {
       },
     );
 
-    return updatedJob;
+    return (await this.findOne(updatedJob._id.toString())) as JobDocument;
   }
 
   async startSalesmanTravel(
@@ -515,15 +726,17 @@ export class JobsService implements OnModuleInit {
       throw new NotFoundException(`Job with id ${id} was not found`);
     }
 
-    const salesmanId =
+    const salesmanId = (
       workflowDto.salesmanId ||
       currentJob.activeSalesmanId ||
       currentJob.assignedSalesman ||
-      currentJob.assignedTo;
-    const salesmanName =
+      currentJob.assignedTo
+    )?.toString();
+    const salesmanName = (
       workflowDto.salesmanName ||
       currentJob.activeSalesmanName ||
-      currentJob.assignedTo;
+      currentJob.assignedTo
+    )?.toString();
 
     const updatedJob = await this.jobModel
       .findOneAndUpdate(
@@ -603,7 +816,13 @@ export class JobsService implements OnModuleInit {
   }
 
   private async findByMongoIdOrJobId(id: string): Promise<JobDocument | null> {
-    return this.jobModel.findOne(this.getIdentifierFilter(id)).exec();
+    return this.jobModel
+      .findOne(this.getIdentifierFilter(id))
+      .populate('assignedTo', 'name email role phone liveStatus')
+      .populate('assignedSalesman', 'name email role phone liveStatus')
+      .populate('assignedBy', 'name email role phone liveStatus')
+      .populate('assignedFitter', 'name email role phone liveStatus')
+      .exec();
   }
 
   private getIdentifierFilter(id: string): Record<string, unknown> {

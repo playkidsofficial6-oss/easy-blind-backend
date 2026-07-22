@@ -1,30 +1,30 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type JobDocument = HydratedDocument<Job>;
 
 export enum JobStatus {
-  Pending = 'pending',
-  Scheduled = 'scheduled',
-  InProgress = 'in_progress',
-  Completed = 'completed',
-  Cancelled = 'cancelled',
+  Pending = 'Pending',
+  Scheduled = 'Scheduled',
+  InProgress = 'In Progress',
+  Completed = 'Completed',
+  Cancelled = 'Cancelled',
 }
 
 export enum JobPriority {
-  Low = 'low',
-  Medium = 'medium',
-  High = 'high',
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
 }
 
 export enum SalesmanWorkflowStatus {
-  NotStarted = 'not_started',
-  Travelling = 'travelling',
-  Measuring = 'measuring',
-  Completed = 'completed',
+  NotStarted = 'Not Started',
+  Travelling = 'Travelling',
+  Measuring = 'Measuring',
+  Completed = 'Completed',
 }
 
-@Schema()
+@Schema({ _id: false })
 export class QuotationItem {
   @Prop({ required: false })
   id: string;
@@ -42,7 +42,7 @@ export class QuotationItem {
   total: number;
 }
 
-@Schema()
+@Schema({ _id: false })
 export class Quotation {
   @Prop({ required: false })
   id: string;
@@ -150,14 +150,26 @@ export class Job {
   @Prop()
   scheduledAt?: Date;
 
-  @Prop({ required: false, trim: true })
-  assignedTo?: string;
+  @Prop({
+    required: false,
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+  })
+  assignedTo?: Types.ObjectId;
 
-  @Prop({ required: false, trim: true })
-  assignedBy?: string;
+  @Prop({
+    required: false,
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+  })
+  assignedBy?: Types.ObjectId;
 
-  @Prop({ required: false, trim: true })
-  assignedSalesman?: string;
+  @Prop({
+    required: false,
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+  })
+  assignedSalesman?: Types.ObjectId;
 
   @Prop({
     required: false,
@@ -182,8 +194,12 @@ export class Job {
   @Prop()
   measurementCompletedAt?: Date;
 
-  @Prop({ required: false, trim: true })
-  assignedFitter?: string;
+  @Prop({
+    required: false,
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+  })
+  assignedFitter?: Types.ObjectId;
 
   @Prop({ type: Quotation })
   quotation?: Quotation;

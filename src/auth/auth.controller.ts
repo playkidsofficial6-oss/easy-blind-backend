@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from './interfaces/jwt-user.interface';
 import { AuthService } from './auth.service';
@@ -39,7 +40,7 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({
-    summary: 'Register a new user and return a JWT access token',
+    summary: 'Register a new user and return JWT access + refresh tokens',
   })
   @ApiCreatedResponse({ description: 'User registered successfully.' })
   register(@Body() registerDto: RegisterDto) {
@@ -49,11 +50,31 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Login with email and password and return a JWT access token',
+    summary: 'Login with email and password and return JWT access + refresh tokens',
   })
   @ApiOkResponse({ description: 'User logged in successfully.' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Exchange a valid refresh token for a new access + refresh token pair',
+  })
+  @ApiOkResponse({ description: 'Tokens refreshed successfully.' })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshTokens(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Invalidate the refresh token and log out' })
+  @ApiOkResponse({ description: 'Logged out successfully.' })
+  logout(@Req() req: AuthenticatedRequest) {
+    return this.authService.logout(req.user.userId);
   }
 
   @Get('profile')
