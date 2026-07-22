@@ -1,3 +1,8 @@
+allowBuilds:
+  '@scarf/scarf': true
+  bcrypt: true
+  mongodb-memory-server: true
+  unrs-resolver: true
 onlyBuiltDependencies:
   - '@scarf/scarf'
   - bcrypt
