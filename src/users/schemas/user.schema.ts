@@ -92,6 +92,10 @@ export class User {
 
   @Prop({ type: Number, min: 1, max: 20, default: 5 })
   maxDailyJobs?: number;
+
+  /** Hashed refresh token — never returned in queries by default. */
+  @Prop({ select: false })
+  refreshToken?: string;
 }
 
 export type UserDocument = HydratedDocument<User>;
