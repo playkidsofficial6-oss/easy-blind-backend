@@ -4,15 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { JwtAuthenticatedUser } from '../auth/interfaces/jwt-user.interface';
-import { UserRole } from '../users/schemas/user.schema';
+import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { UpdateLiveLocationDto } from './dto/update-live-location.dto';
-import {
-  LiveLocation,
-  LiveLocationDocument,
-  LiveLocationRole,
-} from './schemas/live-location.schema';
+
+export enum LiveLocationRole {
+  Salesman = 'SALESMAN',
+  Fitter = 'FITTER',
+}
 
 export interface ApiResponse<T> {
   success: true;
@@ -38,19 +38,17 @@ export interface LiveLocationResponse {
   updatedAt?: Date;
 }
 
-type LiveLocationPlainObject = LiveLocation & {
+type UserPlainObject = User & {
   _id: { toString(): string };
-  userId: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
-  liveStatus?: string;
 };
 
 @Injectable()
 export class LiveLocationService {
   constructor(
-    @InjectModel(LiveLocation.name)
-    private readonly liveLocationModel: Model<LiveLocationDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async updateLocation(
@@ -65,15 +63,12 @@ export class LiveLocationService {
       );
     }
 
-    const userObjectId = new Types.ObjectId(authUser.userId);
     const isOnline = updateLiveLocationDto.isOnline ?? true;
-    const payload: Partial<LiveLocationPlainObject> = {
-      userId: userObjectId,
-      role: trackingRole,
-
+    const payload: Partial<User> = {
       location: {
         type: 'Point',
         coordinates: updateLiveLocationDto.location.coordinates,
+        updatedAt: new Date(),
       },
       accuracy: updateLiveLocationDto.accuracy,
       speed: updateLiveLocationDto.speed,
@@ -86,22 +81,17 @@ export class LiveLocationService {
       payload.liveStatus = 'Offline';
     }
 
-    const updatedLocation = await this.liveLocationModel
-      .findOneAndUpdate(
-        { userId: userObjectId },
-        { $set: payload },
-        {
-          returnDocument: 'after',
-          runValidators: true,
-          upsert: true,
-          setDefaultsOnInsert: true,
-        },
-      )
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(authUser.userId, { $set: payload }, { new: true })
       .exec();
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found');
+    }
 
     return this.success(
       'Live location updated successfully',
-      this.toResponse(updatedLocation),
+      this.toResponse(updatedUser),
     );
   }
 
@@ -117,26 +107,21 @@ export class LiveLocationService {
       );
     }
 
-    const userObjectId = new Types.ObjectId(authUser.userId);
-    const updatedLocation = await this.liveLocationModel
-      .findOneAndUpdate(
-        { userId: userObjectId },
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(
+        authUser.userId,
         {
           $set: {
-            role: trackingRole,
             isOnline,
             liveStatus: isOnline ? 'Available' : 'Offline',
             lastUpdatedAt: new Date(),
           },
         },
-        {
-          returnDocument: 'after',
-          runValidators: true,
-        },
+        { new: true },
       )
       .exec();
 
-    return updatedLocation ? this.toResponse(updatedLocation) : null;
+    return updatedUser ? this.toResponse(updatedUser) : null;
   }
 
   async findAll(
@@ -144,14 +129,17 @@ export class LiveLocationService {
   ): Promise<ApiResponse<LiveLocationResponse[]>> {
     this.assertCanAccessAll(authUser);
 
-    const locations = await this.liveLocationModel
-      .find()
+    const users = await this.userModel
+      .find({
+        role: { $in: [UserRole.Salesman, UserRole.Field, UserRole.Fitter] },
+        location: { $exists: true },
+      })
       .sort({ lastUpdatedAt: -1 })
       .exec();
 
     return this.success(
       'Live locations returned successfully',
-      locations.map((location) => this.toResponse(location)),
+      users.map((user) => this.toResponse(user)),
     );
   }
 
@@ -161,15 +149,15 @@ export class LiveLocationService {
   ): Promise<ApiResponse<LiveLocationResponse>> {
     this.assertCanAccessUserLocation(authUser, userId);
 
-    const location = await this.liveLocationModel.findOne({ userId }).exec();
+    const user = await this.userModel.findById(userId).exec();
 
-    if (!location) {
+    if (!user) {
       throw new NotFoundException('Live location not found for this user');
     }
 
     return this.success(
       'Live location returned successfully',
-      this.toResponse(location),
+      this.toResponse(user),
     );
   }
 
@@ -179,17 +167,30 @@ export class LiveLocationService {
   ): Promise<ApiResponse<LiveLocationResponse>> {
     this.assertCanAccessAll(authUser);
 
-    const deletedLocation = await this.liveLocationModel
-      .findOneAndDelete({ userId })
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $unset: {
+            location: 1,
+            accuracy: 1,
+            speed: 1,
+            heading: 1,
+            lastUpdatedAt: 1,
+          },
+          $set: { isOnline: false, liveStatus: 'Offline' },
+        },
+        { new: true },
+      )
       .exec();
 
-    if (!deletedLocation) {
-      throw new NotFoundException('Live location not found for this user');
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
     return this.success(
       'Live location deleted successfully',
-      this.toResponse(deletedLocation),
+      this.toResponse(user),
     );
   }
 
@@ -236,31 +237,34 @@ export class LiveLocationService {
     return null;
   }
 
-  private toResponse(location: LiveLocationDocument): LiveLocationResponse {
-    const plainLocation = location.toObject() as LiveLocationPlainObject;
+  private toResponse(user: UserDocument): LiveLocationResponse {
+    const plainUser = user.toObject() as UserPlainObject;
+    const userIdStr = plainUser._id.toString();
 
     return {
-      _id: plainLocation._id?.toString(),
-      userId: plainLocation.userId?.toString(),
-      role: plainLocation.role,
-      liveStatus: plainLocation.liveStatus,
-      location: plainLocation.location,
-      accuracy: plainLocation.accuracy,
-      speed: plainLocation.speed,
-      heading: plainLocation.heading,
-      isOnline: plainLocation.isOnline,
-      lastUpdatedAt: plainLocation.lastUpdatedAt,
-      createdAt: plainLocation.createdAt,
-      updatedAt: plainLocation.updatedAt,
+      _id: userIdStr,
+      userId: userIdStr,
+      role: this.toTrackingRole(plainUser.role) ?? LiveLocationRole.Salesman,
+      liveStatus: plainUser.liveStatus,
+      location: plainUser.location ?? {
+        type: 'Point',
+        coordinates: [0, 0],
+      },
+      accuracy: plainUser.accuracy,
+      speed: plainUser.speed,
+      heading: plainUser.heading,
+      isOnline: plainUser.isOnline ?? true,
+      lastUpdatedAt: plainUser.lastUpdatedAt ?? plainUser.updatedAt ?? new Date(),
+      createdAt: plainUser.createdAt,
+      updatedAt: plainUser.updatedAt,
     };
   }
 
   async updateLiveStatus(userId: string, liveStatus: string): Promise<void> {
-    await this.liveLocationModel
-      .findOneAndUpdate(
-        { userId: new Types.ObjectId(userId) },
-        { $set: { liveStatus, lastUpdatedAt: new Date() } },
-      )
+    await this.userModel
+      .findByIdAndUpdate(userId, {
+        $set: { liveStatus, lastUpdatedAt: new Date() },
+      })
       .exec();
   }
 

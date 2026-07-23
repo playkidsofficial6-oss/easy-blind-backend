@@ -89,6 +89,32 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @Post('checkin')
+  @Patch('checkin')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check in user' })
+  @ApiOkResponse({ description: 'Checked in successfully.' })
+  checkIn(
+    @Request() { user }: { user: AuthUser },
+    @Body() body?: { userId?: string },
+  ) {
+    return this.usersService.checkIn(user.userId, body?.userId);
+  }
+
+  @Post('checkout')
+  @Patch('checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check out user' })
+  @ApiOkResponse({ description: 'Checked out successfully.' })
+  checkOut(
+    @Request() { user }: { user: AuthUser },
+    @Body() body?: { userId?: string },
+  ) {
+    return this.usersService.checkOut(user.userId, body?.userId);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

@@ -32,6 +32,7 @@ export interface UserResponse {
   liveStatus?: LiveUserStatus;
   location?: UserLocation;
   maxDailyJobs?: number;
+  checkedIn?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -232,8 +233,40 @@ export class UsersService {
     return { deleted: true, id };
   }
 
+  async checkIn(userId: string | mongoose.Types.ObjectId, targetUserId?: string) {
+    const idToUpdate = targetUserId || userId;
+    const user = await this.userModel.findByIdAndUpdate(
+      idToUpdate,
+      { $set: { checkedIn: true } },
+      { new: true },
+    );
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      message: 'Checked in successfully',
+      data: this.toResponse(user),
+    };
+  }
+
+  async checkOut(userId: string | mongoose.Types.ObjectId, targetUserId?: string) {
+    const idToUpdate = targetUserId || userId;
+    const user = await this.userModel.findByIdAndUpdate(
+      idToUpdate,
+      { $set: { checkedIn: false } },
+      { new: true },
+    );
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      message: 'Checked out successfully',
+      data: this.toResponse(user),
+    };
+  }
+
   private toResponse(user: UserDocument): UserResponse {
-    const plainUser = user.toObject() as UserPlainObject;
+    const plainUser = user.toObject() as UserPlainObject & { checkedIn?: boolean };
 
     return {
       _id: plainUser._id.toString(),
@@ -245,6 +278,7 @@ export class UsersService {
       liveStatus: plainUser.liveStatus,
       location: plainUser.location,
       maxDailyJobs: plainUser.maxDailyJobs,
+      checkedIn: plainUser.checkedIn ?? true,
       createdAt: plainUser.createdAt,
       updatedAt: plainUser.updatedAt,
     };

@@ -10,13 +10,13 @@ import mongoose, { isValidObjectId, Model } from 'mongoose';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
 import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
+import { AssignFitterDto } from './dto/assign-fitter.dto';
+import { FitterWorkflowDto } from './dto/fitter-workflow.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
-import { JobCounter, JobCounterDocument } from './schemas/job-counter.schema';
 import {
   Job,
   JobDocument,
   JobStatus,
-  SalesmanWorkflowStatus,
 } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
@@ -31,8 +31,6 @@ const JOB_ID_PATTERN = /^JOB-\d{4}-\d{4}$/;
 export class JobsService implements OnModuleInit {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
-    @InjectModel(JobCounter.name)
-    private readonly jobCounterModel: Model<JobCounterDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @Inject(forwardRef(() => LiveLocationGateway))
     private readonly liveLocationGateway: LiveLocationGateway,
@@ -85,61 +83,28 @@ export class JobsService implements OnModuleInit {
     };
   }
 
-  private async ensureCounterAtLeast(year: string, sequence: number) {
-    await this.jobCounterModel
-      .findOneAndUpdate(
-        { key: this.getCounterKey(year), sequence: { $lt: sequence } },
-        { $set: { sequence } },
-        { upsert: false },
-      )
-      .exec();
-
-    await this.jobCounterModel
-      .updateOne(
-        { key: this.getCounterKey(year) },
-        { $setOnInsert: { key: this.getCounterKey(year), sequence } },
-        { upsert: true },
-      )
-      .exec();
-  }
-
   private async generateNextJobId(date = new Date()): Promise<string> {
     const year = this.getYear(date);
-    const counter = await this.jobCounterModel
-      .findOneAndUpdate(
-        { key: this.getCounterKey(year) },
-        {
-          $inc: { sequence: 1 },
-          $setOnInsert: { key: this.getCounterKey(year) },
-        },
-        { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true },
-      )
+    const yearPattern = new RegExp(`^JOB-${year}-\\d{4}$`);
+
+    const latestJob = await this.jobModel
+      .findOne({ jobId: { $regex: yearPattern } })
+      .sort({ jobId: -1 })
+      .select('jobId')
       .exec();
 
-    return this.formatJobId(counter.sequence, year);
+    let nextSequence = 1;
+    if (latestJob?.jobId) {
+      const parsed = this.parseJobId(latestJob.jobId);
+      if (parsed) {
+        nextSequence = parsed.sequence + 1;
+      }
+    }
+
+    return this.formatJobId(nextSequence, year);
   }
 
   private async backfillJobIds() {
-    const jobsWithValidIds = await this.jobModel
-      .find({ jobId: { $regex: JOB_ID_PATTERN } })
-      .select('jobId')
-      .lean()
-      .exec();
-
-    const maxSequenceByYear = new Map<string, number>();
-    for (const job of jobsWithValidIds) {
-      const parsed = this.parseJobId(job.jobId);
-      if (!parsed) continue;
-      maxSequenceByYear.set(
-        parsed.year,
-        Math.max(maxSequenceByYear.get(parsed.year) ?? 0, parsed.sequence),
-      );
-    }
-
-    for (const [year, sequence] of maxSequenceByYear) {
-      await this.ensureCounterAtLeast(year, sequence);
-    }
-
     const jobsToBackfill = await this.jobModel
       .find({
         $or: [
@@ -498,10 +463,7 @@ export class JobsService implements OnModuleInit {
     const createdJob = new this.jobModel({
       ...rawJobData,
       jobId,
-      ...(finalAssignedTo ? { assignedTo: finalAssignedTo } : {}),
-      ...(assignedSalesman ? { assignedSalesman } : {}),
       ...(assignedBy ? { assignedBy } : {}),
-      ...(assignedFitter ? { assignedFitter } : {}),
       location: {
         type: 'Point',
         coordinates,
@@ -510,6 +472,18 @@ export class JobsService implements OnModuleInit {
         ? new Date(createJobDto.scheduledAt)
         : undefined,
     });
+
+    if (assignedFitter) {
+      createdJob.assignedFitter = assignedFitter;
+      createdJob.assignedTo = assignedFitter;
+      createdJob.assignedSalesman = undefined;
+      createdJob.status = JobStatus.FitterAssigned;
+    } else if (assignedSalesman) {
+      createdJob.assignedSalesman = assignedSalesman;
+      createdJob.assignedTo = assignedSalesman;
+      createdJob.assignedFitter = undefined;
+      createdJob.status = JobStatus.SalesmanScheduled;
+    }
     const savedJob = await createdJob.save();
     this.notifySalesmanJobAssignment(savedJob).catch((err) => {
       console.error(
@@ -603,16 +577,16 @@ export class JobsService implements OnModuleInit {
       if (resolved) resolvedUserFields.assignedFitter = resolved;
     }
 
-    if (
-      resolvedUserFields.assignedSalesman &&
-      !resolvedUserFields.assignedTo
-    ) {
+    if (resolvedUserFields.assignedFitter) {
+      resolvedUserFields.assignedTo = resolvedUserFields.assignedFitter;
+      resolvedUserFields.assignedSalesman = null;
+      resolvedUserFields.activeSalesmanId = null;
+      resolvedUserFields.activeSalesmanName = null;
+      resolvedUserFields.status = JobStatus.FitterAssigned;
+    } else if (resolvedUserFields.assignedSalesman) {
       resolvedUserFields.assignedTo = resolvedUserFields.assignedSalesman;
-    } else if (
-      resolvedUserFields.assignedTo &&
-      !resolvedUserFields.assignedSalesman
-    ) {
-      resolvedUserFields.assignedSalesman = resolvedUserFields.assignedTo;
+      resolvedUserFields.assignedFitter = null;
+      resolvedUserFields.status = JobStatus.SalesmanScheduled;
     }
 
     let locationUpdate = {};
@@ -678,8 +652,8 @@ export class JobsService implements OnModuleInit {
   ): Promise<JobDocument> {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
-      jobStatus: JobStatus.Scheduled,
-      workflowStatus: SalesmanWorkflowStatus.Travelling,
+      jobStatus: JobStatus.SalesmanOnTheWay,
+
       userStatus: 'On the way',
       timestamps: { travelStartedAt: now },
     });
@@ -691,8 +665,7 @@ export class JobsService implements OnModuleInit {
   ): Promise<JobDocument> {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
-      jobStatus: JobStatus.InProgress,
-      workflowStatus: SalesmanWorkflowStatus.Measuring,
+      jobStatus: JobStatus.Measuring,
       userStatus: 'In progress',
       timestamps: { measurementStartedAt: now, timerStartedAt: now },
     });
@@ -704,11 +677,131 @@ export class JobsService implements OnModuleInit {
   ): Promise<JobDocument> {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
-      jobStatus: JobStatus.Completed,
-      workflowStatus: SalesmanWorkflowStatus.Completed,
+      jobStatus: JobStatus.ReadyForFitting,
       userStatus: 'Available',
       timestamps: { measurementCompletedAt: now },
     });
+  }
+
+  async assignFitter(
+    id: string,
+    dto: AssignFitterDto,
+  ): Promise<JobDocument> {
+    const job = await this.findByMongoIdOrJobId(id);
+    if (!job) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    const fitterUser = await this.userModel.findOne({
+      _id: dto.fitterId,
+      role: UserRole.Fitter,
+    });
+
+    if (!fitterUser) {
+      throw new NotFoundException(`Fitter with id ${dto.fitterId} was not found`);
+    }
+
+    await this.jobModel.findOneAndUpdate(
+      this.getIdentifierFilter(id),
+      {
+        $set: {
+          assignedFitter: fitterUser._id,
+          assignedTo: fitterUser._id,
+          status: JobStatus.FitterAssigned,
+        },
+        $unset: {
+          assignedSalesman: 1,
+          activeSalesmanId: 1,
+          activeSalesmanName: 1,
+        },
+      },
+      { runValidators: true },
+    ).exec();
+
+    return (await this.findByMongoIdOrJobId(id)) as JobDocument;
+  }
+
+  async startFitterTravel(
+    id: string,
+    dto: FitterWorkflowDto,
+  ): Promise<JobDocument> {
+    const job = await this.findByMongoIdOrJobId(id);
+    if (!job) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    const updateObj: Record<string, any> = {
+      status: JobStatus.FitterOnTheWay,
+      fitterTravelStartedAt: new Date(),
+    };
+    if (dto.notes) {
+      updateObj.notes = job.notes ? `${job.notes}\n${dto.notes}` : dto.notes;
+    }
+
+    await this.jobModel.findOneAndUpdate(
+      this.getIdentifierFilter(id),
+      { $set: updateObj },
+      { runValidators: true },
+    ).exec();
+
+    return (await this.findByMongoIdOrJobId(id)) as JobDocument;
+  }
+
+  async startFitterFitting(
+    id: string,
+    dto: FitterWorkflowDto,
+  ): Promise<JobDocument> {
+    const job = await this.findByMongoIdOrJobId(id);
+    if (!job) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    const updateObj: Record<string, any> = {
+      status: JobStatus.Fitting,
+      fittingStartedAt: new Date(),
+    };
+    if (dto.notes) {
+      updateObj.notes = job.notes ? `${job.notes}\n${dto.notes}` : dto.notes;
+    }
+
+    await this.jobModel.findOneAndUpdate(
+      this.getIdentifierFilter(id),
+      { $set: updateObj },
+      { runValidators: true },
+    ).exec();
+
+    return (await this.findByMongoIdOrJobId(id)) as JobDocument;
+  }
+
+  async completeFitterWorkflow(
+    id: string,
+    dto: FitterWorkflowDto,
+  ): Promise<JobDocument> {
+    const job = await this.findByMongoIdOrJobId(id);
+    if (!job) {
+      throw new NotFoundException(`Job with id ${id} was not found`);
+    }
+
+    const updateObj: Record<string, any> = {
+      status: JobStatus.Completed,
+      fittingCompletedAt: new Date(),
+    };
+    if (dto.photos && dto.photos.length > 0) {
+      updateObj.fittingPhotos = Array.from(
+        new Set([...(job.fittingPhotos || []), ...dto.photos]),
+      );
+    }
+    if (dto.notes) {
+      updateObj.fittingNotes = dto.notes;
+    }
+
+    await this.jobModel.findOneAndUpdate(
+      this.getIdentifierFilter(id),
+      { $set: updateObj },
+      { runValidators: true },
+    ).exec();
+
+    return (await this.findByMongoIdOrJobId(id)) as JobDocument;
   }
 
   private async applySalesmanWorkflow(
@@ -716,7 +809,6 @@ export class JobsService implements OnModuleInit {
     workflowDto: SalesmanWorkflowDto,
     state: {
       jobStatus: JobStatus;
-      workflowStatus: SalesmanWorkflowStatus;
       userStatus: 'Available' | 'On the way' | 'In progress';
       timestamps: Record<string, Date>;
     },
@@ -743,7 +835,7 @@ export class JobsService implements OnModuleInit {
         this.getIdentifierFilter(id),
         {
           status: state.jobStatus,
-          salesmanWorkflowStatus: state.workflowStatus,
+
           activeSalesmanId: salesmanId,
           activeSalesmanName: salesmanName,
           ...(salesmanId ? { assignedSalesman: salesmanId } : {}),
@@ -826,15 +918,17 @@ export class JobsService implements OnModuleInit {
   }
 
   private getIdentifierFilter(id: string): Record<string, unknown> {
-    if (JOB_ID_PATTERN.test(id)) {
-      return { jobId: id.toUpperCase() };
-    }
-
     if (isValidObjectId(id)) {
       return { _id: id };
     }
 
-    return { jobId: id.toUpperCase() };
+    return {
+      $or: [
+        { jobId: id },
+        { jobId: id.toUpperCase() },
+        { _id: id },
+      ],
+    };
   }
 
   private buildFilter(query: QueryJobsDto): Record<string, unknown> {

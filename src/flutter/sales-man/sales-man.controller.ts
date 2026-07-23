@@ -28,11 +28,24 @@ export class SalesManController {
     return await this.salesManService.myJobs(user.userId, query);
   }
 
+  @Get("job/:id")
+  async getJobById(@Request() { user }: { user: AuthUser }, @Param("id") id: string): Promise<any> {
+    if (user.role !== UserRole.Salesman) {
+      throw new ForbiddenException("You are not authorized to access this route")
+    }
+    return await this.salesManService.getJobById(user.userId, id);
+  }
+
   @Patch("job/:jobId/status")
   async jobStatus(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() body: JobStatusDto): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
     }
     return await this.salesManService.jobStatus(user.userId, jobId, body);
+  }
+
+  @Patch("job/cancel/:jobId")
+  async cancelJob(@Param("jobId") jobId: string, @Body() dto: { reason: string }) {
+    return await this.salesManService.cancelJob(jobId, dto);
   }
 }

@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
-import { Job, JobDocument, JobStatus, SalesmanWorkflowStatus } from 'src/jobs/schemas/job.schema';
+import { Job, JobDocument, JobStatus } from 'src/jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
 
@@ -64,11 +64,11 @@ export class SalesManService {
             if (job.status === JobStatus.Scheduled) {
                 scheduled++;
             }
-            if (job.status === JobStatus.Completed || job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Completed) {
+            if (job.status === JobStatus.Completed || job.status === JobStatus.ReadyForFitting) {
                 completed++;
                 continue;
             }
-            if (job.status === JobStatus.Cancelled) {
+            if (job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled) {
                 cancelled++;
                 continue;
             }
@@ -77,8 +77,8 @@ export class SalesManService {
 
             const isJobToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Travelling ||
-                job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Measuring ||
+                job.status === JobStatus.SalesmanOnTheWay ||
+                job.status === JobStatus.Measuring ||
                 job.status === JobStatus.InProgress;
 
             if (isJobToday) {
@@ -140,9 +140,7 @@ export class SalesManService {
         if (query?.priority) {
             mongoQuery.priority = query.priority;
         }
-        if (query?.workflowStatus) {
-            mongoQuery.salesmanWorkflowStatus = query.workflowStatus;
-        }
+
 
         if (query?.propertyType) {
             mongoQuery.propertyType = query.propertyType;
@@ -175,9 +173,9 @@ export class SalesManService {
         const filteredJobs = jobs.filter((job) => {
             const isCompleted =
                 job.status === JobStatus.Completed ||
-                job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Completed;
+                job.status === JobStatus.ReadyForFitting;
 
-            const isCancelled = job.status === JobStatus.Cancelled;
+            const isCancelled = job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled;
 
             if (taskFilter === 'Completed') {
                 return isCompleted;
@@ -194,8 +192,8 @@ export class SalesManService {
 
             const isToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Travelling ||
-                job.salesmanWorkflowStatus === SalesmanWorkflowStatus.Measuring ||
+                job.status === JobStatus.SalesmanOnTheWay ||
+                job.status === JobStatus.Measuring ||
                 job.status === JobStatus.InProgress;
 
             if (taskFilter === 'Today') {
@@ -236,13 +234,58 @@ export class SalesManService {
         }
         console.log(dto)
         job.status = dto.status;
-        job.salesmanWorkflowStatus = dto.salesmanWorkflowStatus;
         await job.save();
         return {
             message: "Job status updated successfully",
             data: job,
         };
     }
+
+
+    async cancelJob(jobId: string, dto: { reason: string }) {
+        const job = await this.jobModel.findById(jobId);
+        if (!job) {
+            throw new BadRequestException("Job not found");
+        }
+        job.status = JobStatus.SalesmanCancelled;
+        job.rescheduleRequest = { status: "pending", requestedAt: new Date() }
+        job.cancelReason = dto.reason;
+        await job.save();
+        return {
+            message: "Job cancelled successfully",
+            data: job,
+        };
+    }
+
+    async getJobById(salesmanId: mongoose.Types.ObjectId, jobId: string) {
+        const isHexId = Types.ObjectId.isValid(jobId);
+        if (!isHexId) {
+            throw new BadRequestException("Invalid job ID");
+        }
+        const jobObjectId = new Types.ObjectId(jobId);
+
+        const job = await this.jobModel.findOne({
+            _id: jobObjectId,
+            $or: [
+                { assignedTo: salesmanId },
+                { assignedSalesman: salesmanId },
+            ]
+        }).populate('assignedTo', 'name email role phone liveStatus')
+            .populate('assignedSalesman', 'name email role phone liveStatus')
+            .populate('assignedBy', 'name email role phone liveStatus')
+            .populate('assignedFitter', 'name email role phone liveStatus')
+            .exec();
+
+        if (!job) {
+            throw new NotFoundException("Job not found or not assigned to you");
+        }
+
+        return {
+            message: "Job details fetched successfully",
+            data: job,
+        };
+    }
+
 }
 
 interface HomeResponseType {

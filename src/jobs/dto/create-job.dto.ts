@@ -15,7 +15,6 @@ import {
 import {
   JobPriority,
   JobStatus,
-  SalesmanWorkflowStatus,
 } from '../schemas/job.schema';
 
 export class CreateJobDto {
@@ -113,13 +112,6 @@ export class CreateJobDto {
   @IsString()
   assignedSalesman?: string;
 
-  @ApiPropertyOptional({
-    enum: SalesmanWorkflowStatus,
-    default: SalesmanWorkflowStatus.NotStarted,
-  })
-  @IsOptional()
-  @IsEnum(SalesmanWorkflowStatus)
-  salesmanWorkflowStatus?: SalesmanWorkflowStatus;
 
   @ApiPropertyOptional({ example: 'user_id_of_salesman' })
   @IsOptional()

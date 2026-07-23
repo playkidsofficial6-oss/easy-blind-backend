@@ -1,5 +1,5 @@
 import { IsEnum, IsIn, IsOptional } from "class-validator";
-import { JobPriority, JobStatus, SalesmanWorkflowStatus } from "src/jobs/schemas/job.schema";
+import { JobPriority, JobStatus } from "src/jobs/schemas/job.schema";
 
 export class MyJobsFilterDto {
 
@@ -14,10 +14,6 @@ export class MyJobsFilterDto {
     @IsEnum(JobPriority)
     @IsOptional()
     priority?: JobPriority;
-
-    @IsEnum(SalesmanWorkflowStatus)
-    @IsOptional()
-    workflowStatus?: SalesmanWorkflowStatus;
 
     @IsIn(['Villa', 'Apartment', 'Townhouse', 'Office', 'Other'])
     @IsOptional()

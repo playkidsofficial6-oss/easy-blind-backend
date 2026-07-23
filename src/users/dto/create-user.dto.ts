@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsNumber,
@@ -106,4 +107,9 @@ export class CreateUserDto {
   @Min(1)
   @Max(20)
   maxDailyJobs?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  checkedIn?: boolean;
 }

@@ -7,16 +7,13 @@ import { UsersModule } from '../users/users.module';
 import { LiveLocationController } from './live-location.controller';
 import { LiveLocationGateway } from './live-location.gateway';
 import { LiveLocationService } from './live-location.service';
-import {
-  LiveLocation,
-  LiveLocationSchema,
-} from './schemas/live-location.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
 
 @Module({
   imports: [
     UsersModule,
     MongooseModule.forFeature([
-      { name: LiveLocation.name, schema: LiveLocationSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

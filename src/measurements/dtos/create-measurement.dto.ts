@@ -11,7 +11,15 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MeasurementStatus, OpeningType } from '../schemas/measurement.schema';
+import { OpeningType } from '../../jobs/schemas/job.schema';
+
+export enum MeasurementStatus {
+  PENDING = 'Pending',
+  IN_PROGRESS = 'In Progress',
+  COMPLETED = 'Completed',
+  CANCELLED = 'Cancelled',
+  DRAFT = 'Draft',
+}
 
 export class OpeningDto {
   @ApiProperty({ example: 'w1' })
@@ -23,48 +31,56 @@ export class OpeningDto {
   type: OpeningType;
 
   @ApiProperty({ example: 'Window 1' })
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @ApiProperty({ example: 150 })
+  @IsOptional()
   @IsNumber()
-  @Min(0.1)
-  width: number;
+  @Min(0)
+  width?: number;
 
   @ApiProperty({ example: 200 })
+  @IsOptional()
   @IsNumber()
-  @Min(0.1)
-  height: number;
+  @Min(0)
+  height?: number;
 
   @ApiPropertyOptional({ example: 'cm' })
   @IsOptional()
   @IsString()
   measurementUnit?: string;
 
-  @ApiProperty({ example: 'Wall' })
+  @ApiPropertyOptional({ example: 'Wall' })
+  @IsOptional()
   @IsString()
-  mountType: string;
+  mountType?: string;
 
-  @ApiProperty({ example: 'Split' })
+  @ApiPropertyOptional({ example: 'Split' })
+  @IsOptional()
   @IsString()
-  openingDirection: string;
+  openingDirection?: string;
 
-  @ApiProperty({ example: 'Sheer Curtains' })
+  @ApiPropertyOptional({ example: 'Sheer Curtains' })
+  @IsOptional()
   @IsString()
-  productType: string;
+  productType?: string;
 
-  @ApiProperty({ example: 'aluminum' })
+  @ApiPropertyOptional({ example: 'aluminum' })
+  @IsOptional()
   @IsString()
-  materialType: string;
+  materialType?: string;
 
   @ApiPropertyOptional({ example: 'Custom Pine Wood' })
   @IsOptional()
   @IsString()
   customMaterial?: string;
 
-  @ApiProperty({ example: 'Manual' })
+  @ApiPropertyOptional({ example: 'Manual' })
+  @IsOptional()
   @IsString()
-  motorType: string;
+  motorType?: string;
 
   @ApiPropertyOptional({ example: 'Double height glass window' })
   @IsOptional()
@@ -93,8 +109,9 @@ export class RoomDto {
   name: string;
 
   @ApiProperty({ example: 'Bedroom' })
+  @IsOptional()
   @IsString()
-  category: string;
+  category?: string;
 
   @ApiProperty({ type: [OpeningDto] })
   @IsArray()
@@ -109,12 +126,14 @@ export class CreateMeasurementDto {
   jobId: string;
 
   @ApiProperty({ example: 'salesman_id_123' })
+  @IsOptional()
   @IsString()
-  assignedStaff: string;
+  assignedStaff?: string;
 
   @ApiProperty({ example: '2026-05-20T10:00:00.000Z' })
+  @IsOptional()
   @IsDateString()
-  visitDate: string;
+  visitDate?: string;
 
   @ApiPropertyOptional({
     enum: MeasurementStatus,

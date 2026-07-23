@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Measurement, MeasurementDocument } from './schemas/measurement.schema';
+import { Model, isValidObjectId } from 'mongoose';
+import { Job, JobDocument, JobMeasurements, JobStatus } from '../jobs/schemas/job.schema';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
 import { RoomDto, OpeningDto } from './dtos/create-measurement.dto';
@@ -9,25 +9,27 @@ import { RoomDto, OpeningDto } from './dtos/create-measurement.dto';
 @Injectable()
 export class MeasurementsService {
   constructor(
-    @InjectModel(Measurement.name)
-    private readonly measurementModel: Model<MeasurementDocument>,
+    @InjectModel(Job.name)
+    private readonly jobModel: Model<JobDocument>,
   ) {}
 
   private processMeasurementData(
     dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
-  ) {
-    if (!dto.rooms) return {};
-
+  ): JobMeasurements {
+    const rooms = dto.rooms || [];
     const {
       processedRooms,
       totalRooms,
       totalOpenings,
       totalWindows,
       totalDoors,
-    } = this.calculateSummaryAndArea(dto.rooms);
+    } = this.calculateSummaryAndArea(rooms);
 
     return {
-      rooms: processedRooms,
+      assignedStaff: dto.assignedStaff,
+      visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+      status: dto.status || 'Completed',
+      rooms: processedRooms as any,
       totalRooms,
       totalOpenings,
       totalWindows,
@@ -45,7 +47,6 @@ export class MeasurementsService {
       const openings = (room.openings || []).map((opening: OpeningDto) => {
         totalOpenings++;
 
-        // Handle case-insensitive type matches
         const upperType = (opening.type || '').toUpperCase();
         if (upperType === 'WINDOW') totalWindows++;
         if (upperType === 'DOOR') totalDoors++;
@@ -78,68 +79,103 @@ export class MeasurementsService {
 
   async createMeasurement(
     createDto: CreateMeasurementDto,
-  ): Promise<Measurement> {
+  ): Promise<JobMeasurements> {
     const summaryData = this.processMeasurementData(createDto);
-    const newMeasurement = new this.measurementModel({
-      ...createDto,
-      ...summaryData,
-    });
-    return newMeasurement.save();
+    const filter = isValidObjectId(createDto.jobId)
+      ? { _id: createDto.jobId }
+      : { jobId: createDto.jobId };
+
+    const updateFields: Record<string, any> = { measurements: summaryData };
+    if (createDto.status === 'Completed' || summaryData.status === 'Completed') {
+      updateFields.status = JobStatus.ReadyForFitting;
+    }
+
+    const updatedJob = await this.jobModel
+      .findOneAndUpdate(
+        filter,
+        { $set: updateFields },
+        { new: true },
+      )
+      .exec();
+
+    if (!updatedJob) {
+      throw new NotFoundException(`Job with ID "${createDto.jobId}" not found`);
+    }
+
+    return updatedJob.measurements || summaryData;
   }
 
   async updateMeasurement(
     id: string,
     updateDto: UpdateMeasurementDto,
-  ): Promise<Measurement> {
+  ): Promise<JobMeasurements> {
     const summaryData = this.processMeasurementData(updateDto);
-    const updated = await this.measurementModel
-      .findByIdAndUpdate(
-        id,
-        {
-          $set: {
-            ...updateDto,
-            ...summaryData,
-          },
-        },
+    const filter = isValidObjectId(id)
+      ? { $or: [{ _id: id }, { jobId: id }] }
+      : { jobId: id };
+
+    const updateFields: Record<string, any> = { measurements: summaryData };
+    if (updateDto.status === 'Completed' || summaryData.status === 'Completed') {
+      updateFields.status = JobStatus.ReadyForFitting;
+    }
+
+    const updated = await this.jobModel
+      .findOneAndUpdate(
+        filter,
+        { $set: updateFields },
         { new: true },
       )
       .exec();
 
-    if (!updated) {
-      throw new NotFoundException(`Measurement with ID "${id}" not found`);
+    if (!updated || !updated.measurements) {
+      throw new NotFoundException(`Measurement for Job ID "${id}" not found`);
     }
-    return updated;
+    return updated.measurements;
   }
 
-  async getMeasurementByJobId(jobId: string): Promise<Measurement> {
-    const measurement = await this.measurementModel.findOne({ jobId }).exec();
-    if (!measurement) {
+  async getMeasurementByJobId(jobId: string): Promise<JobMeasurements> {
+    const filter = isValidObjectId(jobId)
+      ? { $or: [{ _id: jobId }, { jobId }] }
+      : { jobId };
+
+    const job = await this.jobModel.findOne(filter).exec();
+    if (!job || !job.measurements) {
       throw new NotFoundException(
         `Measurement for Job ID "${jobId}" not found`,
       );
     }
-    return measurement;
+    return job.measurements;
   }
 
-  async getMeasurementsByStaff(staffId: string): Promise<Measurement[]> {
-    return this.measurementModel.find({ assignedStaff: staffId }).exec();
+  async getMeasurementsByStaff(staffId: string): Promise<JobMeasurements[]> {
+    const jobs = await this.jobModel
+      .find({ 'measurements.assignedStaff': staffId })
+      .exec();
+
+    return jobs
+      .map((job) => job.measurements)
+      .filter((m): m is JobMeasurements => Boolean(m));
   }
 
   async getMeasurementSummary(id: string) {
-    const measurement = await this.measurementModel.findById(id).exec();
-    if (!measurement) {
-      throw new NotFoundException(`Measurement with ID "${id}" not found`);
+    const filter = isValidObjectId(id)
+      ? { $or: [{ _id: id }, { jobId: id }] }
+      : { jobId: id };
+
+    const job = await this.jobModel.findOne(filter).exec();
+    if (!job || !job.measurements) {
+      throw new NotFoundException(`Measurement for Job ID "${id}" not found`);
     }
 
     return {
-      id: measurement._id,
-      jobId: measurement.jobId,
-      status: measurement.status,
-      totalRooms: measurement.totalRooms,
-      totalOpenings: measurement.totalOpenings,
-      totalWindows: measurement.totalWindows,
-      totalDoors: measurement.totalDoors,
-      visitDate: measurement.visitDate,
+      id: job._id,
+      jobId: job.jobId || job._id.toString(),
+      status: job.measurements.status,
+      totalRooms: job.measurements.totalRooms,
+      totalOpenings: job.measurements.totalOpenings,
+      totalWindows: job.measurements.totalWindows,
+      totalDoors: job.measurements.totalDoors,
+      visitDate: job.measurements.visitDate,
     };
   }
 }

@@ -4,9 +4,9 @@ import { Types } from 'mongoose';
 @Injectable()
 export class ParseObjectIdPipe implements PipeTransform<string, string> {
   transform(value: string): string {
-    if (!Types.ObjectId.isValid(value) && !/^JOB-\d{4}-\d{4}$/i.test(value)) {
-      throw new BadRequestException(`Invalid MongoDB ObjectId or Job ID: ${value}`);
+    if (!value || typeof value !== 'string' || value.trim().length === 0) {
+      throw new BadRequestException(`Invalid ID: ${value}`);
     }
-    return value;
+    return value.trim();
   }
 }

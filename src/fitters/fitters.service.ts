@@ -1,18 +1,12 @@
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { CreateFitterDto } from './dto/create-fitter.dto';
 import { UpdateFitterDto } from './dto/update-fitter.dto';
-import {
-  Fitter,
-  FitterDocument,
-  FitterLocation,
-  FitterProfileStatus,
-} from './schemas/fitter.schema';
+import { FitterProfileStatus } from './fitter-status.enum';
 import {
   LiveUserStatus,
   User,
@@ -38,8 +32,8 @@ export interface FitterResponse {
   userId: string;
   user: FitterUserResponse;
   phone?: string;
-  location?: FitterLocation | UserLocation;
-  status: FitterProfileStatus;
+  location?: UserLocation;
+  status: FitterProfileStatus | LiveUserStatus;
   capacity: number;
   skills: string[];
   notes?: string;
@@ -49,48 +43,25 @@ export interface FitterResponse {
 
 type UserPlainObject = User & {
   _id: { toString(): string };
-};
-
-type FitterPlainObject = Fitter & {
-  _id: { toString(): string };
-  userId: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 };
 
-type FitterUpdatePayload = Partial<
-  Pick<
-    Fitter,
-    'phone' | 'location' | 'status' | 'capacity' | 'skills' | 'notes'
-  >
->;
-
 @Injectable()
 export class FittersService {
   constructor(
-    @InjectModel(Fitter.name)
-    private readonly fitterModel: Model<FitterDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) { }
+  ) {}
 
   async create(createFitterDto: CreateFitterDto): Promise<FitterResponse> {
     const user = await this.findFitterUser(createFitterDto.userId);
+    const updatePayload = this.toUserUpdatePayload(createFitterDto);
 
-    try {
-      const created = await this.fitterModel.create({
-        userId: user._id,
-        ...this.toUpdatePayload(createFitterDto),
-      });
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(user._id, { $set: updatePayload }, { new: true })
+      .exec();
 
-      return this.toResponse(user, created);
-    } catch (error) {
-      if (this.isDuplicateKeyError(error)) {
-        throw new ConflictException(
-          'A fitter profile already exists for this user',
-        );
-      }
-      throw error;
-    }
+    return this.toResponse(updatedUser || user);
   }
 
   async findAll(): Promise<FitterResponse[]> {
@@ -99,23 +70,12 @@ export class FittersService {
       .sort({ createdAt: -1 })
       .exec();
 
-    const userIds = users.map((user) => user._id);
-    const profiles = await this.fitterModel
-      .find({ userId: { $in: userIds } })
-      .exec();
-    const profilesByUserId = new Map(
-      profiles.map((profile) => [profile.userId.toString(), profile]),
-    );
-
-    return users.map((user) =>
-      this.toResponse(user, profilesByUserId.get(user._id.toString())),
-    );
+    return users.map((user) => this.toResponse(user));
   }
 
   async findByUserId(userId: string): Promise<FitterResponse> {
     const user = await this.findFitterUser(userId);
-    const profile = await this.fitterModel.findOne({ userId: user._id }).exec();
-    return this.toResponse(user, profile ?? undefined);
+    return this.toResponse(user);
   }
 
   async upsertByUserId(
@@ -123,20 +83,13 @@ export class FittersService {
     updateFitterDto: UpdateFitterDto,
   ): Promise<FitterResponse> {
     const user = await this.findFitterUser(userId);
-    const updated = await this.fitterModel
-      .findOneAndUpdate(
-        { userId: user._id },
-        { $set: this.toUpdatePayload(updateFitterDto) },
-        {
-          returnDocument: 'after',
-          runValidators: true,
-          upsert: true,
-          setDefaultsOnInsert: true,
-        },
-      )
+    const updatePayload = this.toUserUpdatePayload(updateFitterDto);
+
+    const updatedUser = await this.userModel
+      .findByIdAndUpdate(user._id, { $set: updatePayload }, { new: true })
       .exec();
 
-    return this.toResponse(user, updated);
+    return this.toResponse(updatedUser || user);
   }
 
   private async findFitterUser(userId: string): Promise<UserDocument> {
@@ -151,20 +104,24 @@ export class FittersService {
     return user;
   }
 
-  private toUpdatePayload(
+  private toUserUpdatePayload(
     dto: CreateFitterDto | UpdateFitterDto,
-  ): FitterUpdatePayload {
-    const payload: FitterUpdatePayload = {};
+  ): Partial<User> {
+    const payload: Partial<User> = {};
 
     if (dto.phone !== undefined) payload.phone = dto.phone.trim();
     if (dto.location !== undefined) {
       payload.location = {
-        ...dto.location,
+        type: 'Point',
+        coordinates: [dto.location.lng, dto.location.lat],
+        address: dto.location.address,
         updatedAt: new Date(),
       };
     }
-    if (dto.status !== undefined) payload.status = dto.status;
-    if (dto.capacity !== undefined) payload.capacity = dto.capacity;
+    if (dto.status !== undefined) {
+      payload.liveStatus = dto.status as unknown as LiveUserStatus;
+    }
+    if (dto.capacity !== undefined) payload.maxDailyJobs = dto.capacity;
     if (dto.skills !== undefined) {
       payload.skills = dto.skills.map((skill) => skill.trim()).filter(Boolean);
     }
@@ -173,18 +130,15 @@ export class FittersService {
     return payload;
   }
 
-  private toResponse(
-    user: UserDocument,
-    profile?: FitterDocument,
-  ): FitterResponse {
+  private toResponse(user: UserDocument): FitterResponse {
     const plainUser = user.toObject() as UserPlainObject;
-    const plainProfile = profile?.toObject() as FitterPlainObject | undefined;
+    const userIdStr = plainUser._id.toString();
 
     return {
-      _id: plainProfile?._id.toString(),
-      userId: plainUser._id.toString(),
+      _id: userIdStr,
+      userId: userIdStr,
       user: {
-        _id: plainUser._id.toString(),
+        _id: userIdStr,
         name: plainUser.name,
         email: plainUser.email,
         role: plainUser.role,
@@ -194,23 +148,14 @@ export class FittersService {
         location: plainUser.location,
         maxDailyJobs: plainUser.maxDailyJobs,
       },
-      phone: plainProfile?.phone ?? plainUser.phone,
-      location: plainProfile?.location ?? plainUser.location,
-      status: plainProfile?.status ?? FitterProfileStatus.Available,
-      capacity: plainProfile?.capacity ?? plainUser.maxDailyJobs ?? 5,
-      skills: plainProfile?.skills ?? [],
-      notes: plainProfile?.notes,
-      createdAt: plainProfile?.createdAt,
-      updatedAt: plainProfile?.updatedAt,
+      phone: plainUser.phone,
+      location: plainUser.location,
+      status: (plainUser.liveStatus as FitterProfileStatus) ?? FitterProfileStatus.Available,
+      capacity: plainUser.maxDailyJobs ?? 5,
+      skills: plainUser.skills ?? [],
+      notes: plainUser.notes,
+      createdAt: plainUser.createdAt,
+      updatedAt: plainUser.updatedAt,
     };
-  }
-
-  private isDuplicateKeyError(error: unknown): error is { code: number } {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === 11000
-    );
   }
 }

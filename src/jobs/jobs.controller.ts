@@ -24,6 +24,8 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
+import { AssignFitterDto } from './dto/assign-fitter.dto';
+import { FitterWorkflowDto } from './dto/fitter-workflow.dto';
 import { JobsService } from './jobs.service';
 
 @ApiTags('jobs')
@@ -96,6 +98,48 @@ export class JobsController {
     @Body() workflowDto: SalesmanWorkflowDto,
   ) {
     return this.jobsService.completeSalesmanWorkflow(id, workflowDto);
+  }
+
+  @Patch(':id/assign-fitter')
+  @ApiOperation({ summary: 'Assign a fitter to this job post-measurement' })
+  @ApiOkResponse({ description: 'Fitter assigned successfully.' })
+  assignFitter(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() assignFitterDto: AssignFitterDto,
+  ) {
+    return this.jobsService.assignFitter(id, assignFitterDto);
+  }
+
+  @Patch(':id/fitter-travel')
+  @ApiOperation({ summary: 'Mark an assigned fitter as travelling to this job' })
+  @ApiOkResponse({ description: 'Fitter workflow changed to travelling.' })
+  startFitterTravel(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: FitterWorkflowDto,
+  ) {
+    return this.jobsService.startFitterTravel(id, workflowDto);
+  }
+
+  @Patch(':id/fitter-fitting')
+  @ApiOperation({ summary: 'Mark an assigned fitter as fitting this job' })
+  @ApiOkResponse({ description: 'Fitter workflow changed to fitting.' })
+  startFitterFitting(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: FitterWorkflowDto,
+  ) {
+    return this.jobsService.startFitterFitting(id, workflowDto);
+  }
+
+  @Patch(':id/fitter-complete')
+  @ApiOperation({
+    summary: 'Complete the fitter workflow for this job and upload fitting photos',
+  })
+  @ApiOkResponse({ description: 'Fitter workflow completed successfully.' })
+  completeFitterWorkflow(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() workflowDto: FitterWorkflowDto,
+  ) {
+    return this.jobsService.completeFitterWorkflow(id, workflowDto);
   }
 
   @Delete(':id')

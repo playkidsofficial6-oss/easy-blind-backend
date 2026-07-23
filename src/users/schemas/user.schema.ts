@@ -93,6 +93,30 @@ export class User {
   @Prop({ type: Number, min: 1, max: 20, default: 5 })
   maxDailyJobs?: number;
 
+  @Prop({ type: [String], default: [] })
+  skills?: string[];
+
+  @Prop({ trim: true, maxlength: 1000 })
+  notes?: string;
+
+  @Prop({ type: Boolean, default: true, index: true })
+  isOnline?: boolean;
+
+  @Prop({ type: Boolean, default: true, index: true })
+  checkedIn?: boolean;
+
+  @Prop({ type: Date })
+  lastUpdatedAt?: Date;
+
+  @Prop({ type: Number, min: 0 })
+  accuracy?: number;
+
+  @Prop({ type: Number, min: 0 })
+  speed?: number;
+
+  @Prop({ type: Number, min: 0, max: 360 })
+  heading?: number;
+
   /** Hashed refresh token — never returned in queries by default. */
   @Prop({ select: false })
   refreshToken?: string;
