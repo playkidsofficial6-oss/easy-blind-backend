@@ -9,13 +9,16 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CreateJobDto } from './dto/create-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
@@ -24,6 +27,8 @@ import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
 import { JobsService } from './jobs.service';
 
 @ApiTags('jobs')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller({ path: 'jobs', version: '1' })
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}

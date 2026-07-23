@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
@@ -15,6 +16,11 @@ import {
   UserLocation,
   UserRole,
 } from './schemas/user.schema';
+import { ConfigService } from '@nestjs/config';
+import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
+import { JwtService } from '@nestjs/jwt';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 export interface UserResponse {
   _id: string;
@@ -61,7 +67,9 @@ type UserUpdatePayload = Partial<
 export class UsersService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponse> {
     const normalizedEmail = createUserDto.email.toLowerCase().trim();
@@ -249,5 +257,62 @@ export class UsersService {
       'code' in error &&
       error.code === 11000
     );
+  }
+
+  async forgetPassword(dto: PasswordResetRequestDto) {
+    const user = await this.findByEmail(dto.email);
+    if (user) {
+      const secret = this.configService.getOrThrow<string>('JWT_SECRET');
+      await this.jwtService.signAsync(
+        { userId: user._id },
+        { expiresIn: '1d', secret },
+      );
+    }
+    return {
+      message:
+        'If an account with that email exists, a password reset link has been sent.',
+      data: null,
+    };
+  }
+
+  async resetPassword(token: string, dto: ResetPasswordDto) {
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+    const secret = this.configService.getOrThrow<string>('JWT_SECRET');
+    const decodedToken = await this.jwtService.verifyAsync(token, { secret });
+    const user = await this.userModel.findById(decodedToken.userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+    await user.save();
+    return {
+      message: 'Password reset successfully',
+      data: null,
+    };
+  }
+
+  async changePassword(userId: mongoose.Types.ObjectId, dto: ChangePasswordDto) {
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+    const user = await this.userModel.findById(userId).select('+passwordHash');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const isPasswordMatch = await bcrypt.compare(
+      dto.oldPassword,
+      user.passwordHash,
+    );
+    if (!isPasswordMatch) {
+      throw new BadRequestException('Invalid old password');
+    }
+    user.passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+    await user.save();
+    return {
+      message: 'Password changed successfully',
+      data: null,
+    };
   }
 }

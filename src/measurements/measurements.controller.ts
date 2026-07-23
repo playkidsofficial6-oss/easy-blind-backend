@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MeasurementsService } from './measurements.service';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
 
 @ApiTags('Measurements')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('measurements')
 export class MeasurementsController {
   constructor(private readonly measurementsService: MeasurementsService) {}

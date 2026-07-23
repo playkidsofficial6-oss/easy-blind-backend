@@ -11,7 +11,7 @@ export class SalesManService {
         @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>
     ) { }
 
-    async home(assignedSalesman: mongoose.Types.ObjectId): Promise<HomeResponseType> {
+    async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
         const isHexId = Types.ObjectId.isValid(assignedSalesman);
         const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
         const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
@@ -111,7 +111,7 @@ export class SalesManService {
         };
     }
 
-    async myJobs(assignedSalesman: mongoose.Types.ObjectId, query: MyJobsFilterDto): Promise<MyJobResponseType> {
+    async myJobs(assignedSalesman: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
         const isHexId = Types.ObjectId.isValid(assignedSalesman);
         const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
         const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
@@ -229,7 +229,7 @@ export class SalesManService {
         };
     }
 
-    async jobStatus(salesmanId: mongoose.Types.ObjectId, jobId: string, dto: JobStatusDto) {
+    async jobStatus(salesmanId: mongoose.Types.ObjectId | string, jobId: string, dto: JobStatusDto) {
         const job = await this.jobModel.findById(jobId);
         if (!job) {
             throw new BadRequestException("Job not found");

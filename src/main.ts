@@ -1,6 +1,3 @@
-import * as dns from 'dns';
-dns.setServers(['8.8.8.8', '8.8.4.4']);
-
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
