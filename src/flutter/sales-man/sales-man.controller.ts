@@ -45,7 +45,10 @@ export class SalesManController {
   }
 
   @Patch("job/cancel/:jobId")
-  async cancelJob(@Param("jobId") jobId: string, @Body() dto: { reason: string }) {
-    return await this.salesManService.cancelJob(jobId, dto);
+  async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: { reason: string }) {
+    if (user.role !== UserRole.Salesman) {
+      throw new ForbiddenException("You are not authorized to access this route");
+    }
+    return await this.salesManService.cancelJob(user.userId, jobId, dto);
   }
 }

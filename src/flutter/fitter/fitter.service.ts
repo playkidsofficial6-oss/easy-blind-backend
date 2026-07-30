@@ -1,39 +1,33 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
-import { Job, JobDocument, JobStatus } from 'src/jobs/schemas/job.schema';
+import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
-import { JobStatusDto } from './dto/job-status-change.dto';
+import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
 
 @Injectable()
-export class SalesManService {
+export class FitterService {
     constructor(
         @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>
     ) { }
 
-    async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedSalesman);
-        const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
-        const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
+    async home(assignedFitter: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
+        const isHexId = Types.ObjectId.isValid(assignedFitter);
+        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
 
-        const salesmanQuery = {
+        const fitterQuery = {
             $or: [
-                ...(salesmanObjectId
+                ...(fitterObjectId
                     ? [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedTo: salesmanObjectId },
-                    ]
-                    : []),
-                ...(salesmanIdStr
-                    ? [
-                        { activeSalesmanId: salesmanIdStr },
+                        { assignedFitter: fitterObjectId },
+                        { assignedTo: fitterObjectId },
                     ]
                     : []),
             ],
         };
 
         const jobs = await this.jobModel
-            .find(salesmanQuery)
+            .find(fitterQuery)
             .populate('assignedTo', 'name email role phone liveStatus')
             .populate('assignedSalesman', 'name email role phone liveStatus')
             .populate('assignedBy', 'name email role phone liveStatus')
@@ -61,14 +55,14 @@ export class SalesManService {
             if (job.status === JobStatus.Pending) {
                 pending++;
             }
-            if (job.status === JobStatus.Scheduled) {
+            if (job.status === JobStatus.Scheduled || job.status === JobStatus.FitterAssigned) {
                 scheduled++;
             }
-            if (job.status === JobStatus.Completed || job.status === JobStatus.ReadyForFitting) {
+            if (job.status === JobStatus.Completed) {
                 completed++;
                 continue;
             }
-            if (job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled) {
+            if (job.status === JobStatus.Cancelled || job.status === JobStatus.FitterCancelled || job.status === JobStatus.SalesmanCancelled) {
                 cancelled++;
                 continue;
             }
@@ -77,8 +71,10 @@ export class SalesManService {
 
             const isJobToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring ||
+                job.status === JobStatus.FitterOnTheWay ||
+                job.status === JobStatus.FitterReached ||
+                job.status === JobStatus.Fitting ||
+                job.status === JobStatus.TakingPhotos ||
                 job.status === JobStatus.InProgress;
 
             if (isJobToday) {
@@ -111,28 +107,22 @@ export class SalesManService {
         };
     }
 
-    async myJobs(assignedSalesman: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedSalesman);
-        const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
-        const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
+    async myJobs(assignedFitter: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
+        const isHexId = Types.ObjectId.isValid(assignedFitter);
+        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
 
-        const baseSalesmanFilter = {
+        const baseFitterFilter = {
             $or: [
-                ...(salesmanObjectId
+                ...(fitterObjectId
                     ? [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedTo: salesmanObjectId },
-                    ]
-                    : []),
-                ...(salesmanIdStr
-                    ? [
-                        { activeSalesmanId: salesmanIdStr },
+                        { assignedFitter: fitterObjectId },
+                        { assignedTo: fitterObjectId },
                     ]
                     : []),
             ],
         };
 
-        const mongoQuery: any = { ...baseSalesmanFilter };
+        const mongoQuery: any = { ...baseFitterFilter };
 
         if (query?.status) {
             mongoQuery.status = query.status;
@@ -140,7 +130,6 @@ export class SalesManService {
         if (query?.priority) {
             mongoQuery.priority = query.priority;
         }
-
 
         if (query?.propertyType) {
             mongoQuery.propertyType = query.propertyType;
@@ -170,12 +159,23 @@ export class SalesManService {
         const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-        const filteredJobs = jobs.filter((job) => {
-            const isCompleted =
-                job.status === JobStatus.Completed ||
-                job.status === JobStatus.ReadyForFitting;
+        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+        const endOfYesterday = new Date(startOfToday.getTime() - 1);
 
-            const isCancelled = job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled;
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(startOfToday.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
+        const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const filteredJobs = jobs.filter((job) => {
+            const isCompleted = job.status === JobStatus.Completed;
+
+            const isCancelled =
+                job.status === JobStatus.Cancelled ||
+                job.status === JobStatus.FitterCancelled ||
+                job.status === JobStatus.SalesmanCancelled;
 
             if (taskFilter === 'Completed') {
                 return isCompleted;
@@ -192,12 +192,26 @@ export class SalesManService {
 
             const isToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring ||
+                job.status === JobStatus.FitterOnTheWay ||
+                job.status === JobStatus.FitterReached ||
+                job.status === JobStatus.Fitting ||
+                job.status === JobStatus.TakingPhotos ||
                 job.status === JobStatus.InProgress;
 
             if (taskFilter === 'Today') {
                 return isToday;
+            }
+
+            if (taskFilter === 'Yesterday') {
+                return !!(scheduledDate && scheduledDate >= startOfYesterday && scheduledDate <= endOfYesterday);
+            }
+
+            if (taskFilter === 'Week') {
+                return !!(scheduledDate && scheduledDate >= startOfWeek && scheduledDate <= endOfWeek);
+            }
+
+            if (taskFilter === 'Month') {
+                return !!(scheduledDate && scheduledDate >= startOfMonth && scheduledDate <= endOfMonth);
             }
 
             if (isToday) {
@@ -227,18 +241,19 @@ export class SalesManService {
         };
     }
 
-    async jobStatus(salesmanId: mongoose.Types.ObjectId | string, jobId: string, dto: JobStatusDto) {
+    async jobStatus(fitterId: mongoose.Types.ObjectId | string, jobId: string, dto: JobStatusDto) {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
+        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
+
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(salesmanObjectId
+            ...(fitterObjectId
                 ? {
                     $or: [
-                        { assignedTo: salesmanObjectId },
-                        { assignedSalesman: salesmanObjectId },
+                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
                     ],
                 }
                 : {}),
@@ -247,7 +262,7 @@ export class SalesManService {
         if (!job) {
             throw new NotFoundException("Job not found or not assigned to you");
         }
-        console.log(dto);
+
         job.status = dto.status;
         await job.save();
         return {
@@ -256,19 +271,19 @@ export class SalesManService {
         };
     }
 
-
-    async cancelJob(salesmanId: mongoose.Types.ObjectId | string, jobId: string, dto: { reason: string }) {
+    async cancelJob(fitterId: mongoose.Types.ObjectId | string, jobId: string, dto: { reason: string }) {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
+        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
+
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(salesmanObjectId
+            ...(fitterObjectId
                 ? {
                     $or: [
-                        { assignedTo: salesmanObjectId },
-                        { assignedSalesman: salesmanObjectId },
+                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
                     ],
                 }
                 : {}),
@@ -277,7 +292,8 @@ export class SalesManService {
         if (!job) {
             throw new NotFoundException("Job not found or not assigned to you");
         }
-        job.status = JobStatus.SalesmanCancelled;
+
+        job.status = JobStatus.FitterCancelled;
         job.rescheduleRequest = { status: "pending", requestedAt: new Date() };
         job.cancelReason = dto.reason;
         await job.save();
@@ -287,20 +303,27 @@ export class SalesManService {
         };
     }
 
-    async getJobById(salesmanId: mongoose.Types.ObjectId, jobId: string) {
+    async getJobById(fitterId: mongoose.Types.ObjectId | string, jobId: string) {
         const isHexId = Types.ObjectId.isValid(jobId);
         if (!isHexId) {
             throw new BadRequestException("Invalid job ID");
         }
         const jobObjectId = new Types.ObjectId(jobId);
+        const isFitterHexId = Types.ObjectId.isValid(fitterId);
+        const fitterObjectId = isFitterHexId ? new Types.ObjectId(fitterId) : null;
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
             $or: [
-                { assignedTo: salesmanId },
-                { assignedSalesman: salesmanId },
-            ]
-        }).populate('assignedTo', 'name email role phone liveStatus')
+                ...(fitterObjectId
+                    ? [
+                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
+                    ]
+                    : []),
+            ],
+        })
+            .populate('assignedTo', 'name email role phone liveStatus')
             .populate('assignedSalesman', 'name email role phone liveStatus')
             .populate('assignedBy', 'name email role phone liveStatus')
             .populate('assignedFitter', 'name email role phone liveStatus')
@@ -315,25 +338,23 @@ export class SalesManService {
             data: job,
         };
     }
-
 }
 
 interface HomeResponseType {
-    message: string,
+    message: string;
     data: {
-        tommorow: number,
-        upcoming: number,
-        pending: number,
-        scheduled: number,
-        completed: number,
-        cancelled: number,
-        delayed: number,
-        todayJobs: JobDocument[]
-    }
+        tommorow: number;
+        upcoming: number;
+        pending: number;
+        scheduled: number;
+        completed: number;
+        cancelled: number;
+        delayed: number;
+        todayJobs: JobDocument[];
+    };
 }
 
 interface MyJobResponseType {
-    message: string,
-    data: JobDocument[]
-
+    message: string;
+    data: JobDocument[];
 }
