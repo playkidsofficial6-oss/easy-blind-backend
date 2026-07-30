@@ -14,20 +14,22 @@ export class SalesManService {
 
     async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
 
-        const jobs = await this.jobModel
-            .find({ assignedSalesman, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
-            .populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
-            .sort({ scheduledAt: 1, createdAt: -1 })
-            .exec();
-
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
         const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+
+        const jobs = await this.jobModel
+            .find({ assignedSalesman, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
+            .sort({ scheduledAt: 1, createdAt: -1 })
+            .exec();
+
 
         const todayJobs: JobDocument[] = jobs;
         let tommorow = 0;
