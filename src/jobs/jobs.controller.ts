@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -38,8 +39,8 @@ export class JobsController {
   @Post()
   @ApiOperation({ summary: 'Create a new Easy-Blinds job' })
   @ApiCreatedResponse({ description: 'Job created successfully.' })
-  create(@Body() createJobDto: CreateJobDto) {
-    return this.jobsService.create(createJobDto);
+  create(@Body() createJobDto: CreateJobDto, @Req() req: any) {
+    return this.jobsService.create(createJobDto, req?.user);
   }
 
   @Get()

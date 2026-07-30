@@ -310,6 +310,17 @@ export class JobsService implements OnModuleInit {
             anyJob.assignedSalesManager,
           );
           if (resolved) updates.assignedSalesManager = resolved;
+        } else if (!anyJob.assignedSalesManager) {
+          const resolved = await this.resolveUserObjectId(UserRole.SalesManager);
+          if (resolved) updates.assignedSalesManager = resolved;
+        }
+
+        if (
+          anyJob.fittingPhotos &&
+          anyJob.fittingPhotos.length > 0 &&
+          (!anyJob.photos || anyJob.photos.length === 0)
+        ) {
+          updates.photos = anyJob.fittingPhotos;
         }
 
         if (
@@ -425,15 +436,37 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  async create(createJobDto: CreateJobDto): Promise<JobDocument> {
+  async create(
+    createJobDto: CreateJobDto,
+    currentUser?: any,
+  ): Promise<JobDocument> {
     const coordinates =
       createJobDto.location?.coordinates ||
       (await geocodeAddress(createJobDto.address));
     const jobId = await this.generateNextJobId();
 
-    const assignedSalesManager = await this.resolveUserObjectId(
+    let assignedSalesManager = await this.resolveUserObjectId(
       createJobDto.assignedSalesManager,
     );
+
+    if (!assignedSalesManager && currentUser?.userId) {
+      const user = await this.userModel.findById(currentUser.userId).exec();
+      if (user) {
+        if (
+          user.role === UserRole.SalesManager ||
+          user.role === UserRole.Admin ||
+          user.role === UserRole.Owner
+        ) {
+          assignedSalesManager = user._id as mongoose.Types.ObjectId;
+        }
+      }
+    }
+
+    if (!assignedSalesManager) {
+      assignedSalesManager = await this.resolveUserObjectId(
+        UserRole.SalesManager,
+      );
+    }
     const assignedSalesman = await this.resolveUserObjectId(
       createJobDto.assignedSalesman,
     );
@@ -761,8 +794,9 @@ export class JobsService implements OnModuleInit {
       fittingCompletedAt: new Date(),
     };
     if (dto.photos && dto.photos.length > 0) {
-      updateObj.fittingPhotos = Array.from(
-        new Set([...(job.fittingPhotos || []), ...dto.photos]),
+      const existingPhotos = job.photos || (job as any).fittingPhotos || [];
+      updateObj.photos = Array.from(
+        new Set([...existingPhotos, ...dto.photos]),
       );
     }
     if (dto.notes) {

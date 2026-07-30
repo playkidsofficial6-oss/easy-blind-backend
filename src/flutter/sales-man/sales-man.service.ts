@@ -29,7 +29,7 @@ export class SalesManService {
         const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-        const todayJobs: JobDocument[] = [];
+        const todayJobs: JobDocument[] = jobs;
         let tommorow = 0;
         let upcoming = 0;
         let completed = 0;

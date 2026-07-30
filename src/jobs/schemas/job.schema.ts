@@ -290,7 +290,7 @@ export class Job {
   assignedFitter?: Types.ObjectId;
 
   @Prop({ type: [String], default: [] })
-  fittingPhotos?: string[];
+  photos?: string[];
 
   @Prop({ trim: true, maxlength: 2000 })
   fittingNotes?: string;
