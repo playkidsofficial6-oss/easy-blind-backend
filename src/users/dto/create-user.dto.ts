@@ -16,7 +16,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserRole } from '../schemas/user.schema';
-import type { LiveUserStatus } from '../schemas/user.schema';
+import type { UserStatus } from '../schemas/user.schema';
 
 export class UserLocationDto {
   @ApiProperty({ example: 25.2048 })
@@ -91,8 +91,8 @@ export class CreateUserDto {
     'Completed',
     'Offline',
     'Fully Booked',
-  ] as LiveUserStatus[])
-  liveStatus?: LiveUserStatus;
+  ] as UserStatus[])
+  liveStatus?: UserStatus;
 
   @ApiPropertyOptional({ type: UserLocationDto })
   @IsOptional()

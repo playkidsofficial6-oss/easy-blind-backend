@@ -10,7 +10,7 @@ import mongoose, { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
-  LiveUserStatus,
+  UserStatus,
   User,
   UserDocument,
   UserLocation,
@@ -29,7 +29,7 @@ export interface UserResponse {
   role: UserRole;
   phone?: string;
   avatar?: string;
-  liveStatus?: LiveUserStatus;
+  liveStatus?: UserStatus;
   location?: UserLocation;
   maxDailyJobs?: number;
   checkedIn?: boolean;
@@ -58,7 +58,7 @@ type UserUpdatePayload = Partial<
     | 'role'
     | 'phone'
     | 'avatar'
-    | 'liveStatus'
+    | 'status'
     | 'location'
     | 'maxDailyJobs'
   >
@@ -124,7 +124,7 @@ export class UsersService {
         user: this.toResponse(user),
         phone: plainUser.phone,
         location: plainUser.location,
-        status: plainUser.liveStatus ?? 'Available',
+        status: plainUser.status ?? 'Available',
         capacity: plainUser.maxDailyJobs ?? 5,
         skills: plainUser.skills ?? [],
         notes: plainUser.notes,
@@ -211,7 +211,7 @@ export class UsersService {
     }
 
     if (updateUserDto.liveStatus !== undefined) {
-      updatePayload.liveStatus = updateUserDto.liveStatus;
+      updatePayload.status = updateUserDto.liveStatus;
     }
 
     if (updateUserDto.location !== undefined) {
@@ -292,7 +292,7 @@ export class UsersService {
       role: plainUser.role,
       phone: plainUser.phone,
       avatar: plainUser.avatar,
-      liveStatus: plainUser.liveStatus,
+      liveStatus: plainUser.status,
       location: plainUser.location,
       maxDailyJobs: plainUser.maxDailyJobs,
       checkedIn: plainUser.checkedIn ?? true,

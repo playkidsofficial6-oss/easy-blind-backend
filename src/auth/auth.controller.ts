@@ -86,17 +86,7 @@ export class AuthController {
     return this.usersService.findById(req.user.userId);
   }
 
-  @Patch('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update the authenticated user profile' })
-  @ApiOkResponse({ description: 'Profile updated successfully.' })
-  updateProfile(
-    @Req() req: AuthenticatedRequest,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return this.usersService.update(req.user.userId, updateUserDto);
-  }
+
 
 
 }

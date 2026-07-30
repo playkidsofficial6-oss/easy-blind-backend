@@ -134,6 +134,29 @@ export class FitterService {
             mongoQuery.propertyType = query.propertyType;
         }
 
+        if (query?.q) {
+            mongoQuery.$or = [
+                {
+                    firstname: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+                {
+                    lastname: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+                {
+                    address: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+            ];
+        }
+
         const jobs = await this.jobModel
             .find(mongoQuery)
             .populate('assignedTo', 'name email role phone liveStatus')
@@ -262,6 +285,7 @@ export class FitterService {
         }
 
         job.status = dto.status;
+        job.customerNote = dto.customerNote
         await job.save();
         return {
             message: "Job status updated successfully",

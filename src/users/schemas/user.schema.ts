@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type LiveUserStatus =
+export type UserStatus =
   | 'Available'
   | 'On the way'
   | 'In progress'
@@ -85,7 +85,7 @@ export class User {
       'Fully Booked',
     ],
   })
-  liveStatus?: LiveUserStatus;
+  status?: UserStatus;
 
   @Prop({ type: UserLocationSchema })
   location?: UserLocation;

@@ -653,8 +653,6 @@ export class JobsService implements OnModuleInit {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
       jobStatus: JobStatus.SalesmanOnTheWay,
-
-      userStatus: 'On the way',
       timestamps: { travelStartedAt: now },
     });
   }
@@ -666,7 +664,6 @@ export class JobsService implements OnModuleInit {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
       jobStatus: JobStatus.Measuring,
-      userStatus: 'In progress',
       timestamps: { measurementStartedAt: now, timerStartedAt: now },
     });
   }
@@ -678,7 +675,6 @@ export class JobsService implements OnModuleInit {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
       jobStatus: JobStatus.ReadyForFitting,
-      userStatus: 'Available',
       timestamps: { measurementCompletedAt: now },
     });
   }
@@ -809,7 +805,6 @@ export class JobsService implements OnModuleInit {
     workflowDto: SalesmanWorkflowDto,
     state: {
       jobStatus: JobStatus;
-      userStatus: 'Available' | 'On the way' | 'In progress';
       timestamps: Record<string, Date>;
     },
   ): Promise<JobDocument> {
@@ -856,20 +851,19 @@ export class JobsService implements OnModuleInit {
       await this.userModel
         .findByIdAndUpdate(
           salesmanId,
-          { liveStatus: state.userStatus },
+
           { runValidators: true },
         )
         .exec();
 
       await this.liveLocationService.updateLiveStatus(
         salesmanId,
-        state.userStatus,
       );
 
       console.log(
         `🚗 Emitting salesman:status-changed`,
         `userId: ${salesmanId}`,
-        `status: ${state.userStatus}`,
+
       );
 
       try {
@@ -877,12 +871,12 @@ export class JobsService implements OnModuleInit {
           .to('live-location:managers')
           .emit('salesman:status-changed', {
             userId: salesmanId,
-            status: state.userStatus,
+
             role: 'Salesman',
             jobId: id,
           });
         console.log(
-          `[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> ${state.userStatus}`,
+          `[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> s}`,
         );
       } catch (err) {
         console.error('[Socket] Failed to emit salesman:status-changed:', err);

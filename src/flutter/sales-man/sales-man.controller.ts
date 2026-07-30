@@ -6,6 +6,7 @@ import { AuthUser } from '../../helpers/AuthUser.type';
 import { UserRole } from '../../users/schemas/user.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
+import { CancelJobDto } from './dto/cancel-job.dto';
 
 @ApiTags('flutter-salesman')
 @ApiBearerAuth()
@@ -32,6 +33,16 @@ export class SalesManController {
     return await this.salesManService.myJobs(user.userId, query);
   }
 
+
+  @Get("job/completed")
+  @ApiOperation({ summary: 'Get list of completed jobs for logged-in salesman' })
+  async completedJobs(@Request() { user }: { user: AuthUser }): Promise<any> {
+    if (user.role !== UserRole.Salesman) {
+      throw new ForbiddenException("You are not authorized to access this route")
+    }
+    return await this.salesManService.completedJobs(user.userId);
+  }
+
   @Get("job/:id")
   @ApiOperation({ summary: 'Get job details by ID for salesman' })
   async getJobById(@Request() { user }: { user: AuthUser }, @Param("id") id: string): Promise<any> {
@@ -52,10 +63,13 @@ export class SalesManController {
 
   @Patch("job/cancel/:jobId")
   @ApiOperation({ summary: 'Cancel a job by salesman' })
-  async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: { reason: string }) {
+  async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: CancelJobDto) {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route");
     }
     return await this.salesManService.cancelJob(user.userId, jobId, dto);
   }
+
+
+
 }

@@ -235,6 +235,9 @@ export class Job {
   @Prop({ required: false, trim: true })
   customerPhone: string;
 
+  @Prop({ required: false, trim: true })
+  customerNote?: string
+
   @Prop({ required: true, trim: true, maxlength: 250 })
   address: string;
 

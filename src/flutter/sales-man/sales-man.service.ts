@@ -4,6 +4,7 @@ import mongoose, { Model, Types } from 'mongoose';
 import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
+import { AuthUser } from 'src/helpers/AuthUser.type';
 
 @Injectable()
 export class SalesManService {
@@ -145,6 +146,29 @@ export class SalesManService {
             mongoQuery.propertyType = query.propertyType;
         }
 
+        if (query?.q) {
+            mongoQuery.$or = [
+                {
+                    firstname: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+                {
+                    lastname: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+                {
+                    address: {
+                        $regex: query.q,
+                        $options: 'i',
+                    },
+                },
+            ];
+        }
+
         const jobs = await this.jobModel
             .find(mongoQuery)
             .populate('assignedTo', 'name email role phone liveStatus')
@@ -247,6 +271,7 @@ export class SalesManService {
         }
         console.log(dto);
         job.status = dto.status;
+        job.customerNote = dto.customerNote;
         await job.save();
         return {
             message: "Job status updated successfully",
@@ -311,6 +336,27 @@ export class SalesManService {
         return {
             message: "Job details fetched successfully",
             data: job,
+        };
+    }
+
+    async completedJobs(user: mongoose.Types.ObjectId) {
+        const isHexId = Types.ObjectId.isValid(user);
+        if (!isHexId) {
+            throw new BadRequestException("Invalid user ID");
+        }
+        const userObjectId = new Types.ObjectId(user);
+        const jobs = await this.jobModel.find({
+            assignedTo: userObjectId,
+            status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
+        }).populate('assignedTo', 'name email role phone liveStatus')
+            .populate('assignedSalesman', 'name email role phone liveStatus')
+            .populate('assignedBy', 'name email role phone liveStatus')
+            .populate('assignedFitter', 'name email role phone liveStatus')
+            .sort({ scheduledAt: 1, createdAt: -1 })
+            .exec();
+        return {
+            message: "Completed jobs fetched successfully",
+            data: jobs,
         };
     }
 

@@ -4,6 +4,7 @@ import { FitterService } from './fitter.service';
 import { AuthUser } from '../../helpers/AuthUser.type';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
+import { CancelJobDto } from '../sales-man/dto/cancel-job.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 
@@ -52,7 +53,7 @@ export class FitterController {
 
   @Patch("job/cancel/:jobId")
   @ApiOperation({ summary: 'Cancel a job by fitter' })
-  async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: { reason: string }) {
+  async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: CancelJobDto) {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
     }

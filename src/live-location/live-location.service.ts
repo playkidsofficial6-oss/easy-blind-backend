@@ -78,7 +78,7 @@ export class LiveLocationService {
     };
 
     if (!isOnline) {
-      payload.liveStatus = 'Offline';
+      payload.status = 'Offline';
     }
 
     const updatedUser = await this.userModel
@@ -212,7 +212,7 @@ export class LiveLocationService {
       _id: userIdStr,
       userId: userIdStr,
       role: this.toTrackingRole(plainUser.role) ?? LiveLocationRole.Salesman,
-      liveStatus: plainUser.liveStatus,
+      liveStatus: plainUser.status,
       location: plainUser.location ?? {
         type: 'Point',
         coordinates: [0, 0],
@@ -227,10 +227,10 @@ export class LiveLocationService {
     };
   }
 
-  async updateLiveStatus(userId: string, liveStatus: string): Promise<void> {
+  async updateLiveStatus(userId: string): Promise<void> {
     await this.userModel
       .findByIdAndUpdate(userId, {
-        $set: { liveStatus, lastUpdatedAt: new Date() },
+        $set: { isOnline: true, liveStatus: "Available", lastUpdatedAt: new Date() },
       })
       .exec();
   }
