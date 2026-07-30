@@ -1,5 +1,5 @@
 import { IsEnum, IsIn, IsOptional } from "class-validator";
-import { JobPriority, JobStatus } from "src/jobs/schemas/job.schema";
+import { JobPriority, JobStatus } from "../../../jobs/schemas/job.schema";
 
 export class MyJobsFilterDto {
 

@@ -49,7 +49,7 @@ export class LiveLocationService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   async updateLocation(
     authUser: JwtAuthenticatedUser,
@@ -157,39 +157,6 @@ export class LiveLocationService {
 
     return this.success(
       'Live location returned successfully',
-      this.toResponse(user),
-    );
-  }
-
-  async deleteByUserId(
-    authUser: JwtAuthenticatedUser,
-    userId: string,
-  ): Promise<ApiResponse<LiveLocationResponse>> {
-    this.assertCanAccessAll(authUser);
-
-    const user = await this.userModel
-      .findByIdAndUpdate(
-        userId,
-        {
-          $unset: {
-            location: 1,
-            accuracy: 1,
-            speed: 1,
-            heading: 1,
-            lastUpdatedAt: 1,
-          },
-          $set: { isOnline: false, liveStatus: 'Offline' },
-        },
-        { new: true },
-      )
-      .exec();
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return this.success(
-      'Live location deleted successfully',
       this.toResponse(user),
     );
   }

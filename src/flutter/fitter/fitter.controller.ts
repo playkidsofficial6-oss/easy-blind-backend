@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Query, Request, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FitterService } from './fitter.service';
 import { AuthUser } from '../../helpers/AuthUser.type';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
@@ -6,12 +7,15 @@ import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { UserRole } from '../../users/schemas/user.schema';
 
+@ApiTags('flutter-fitter')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('flutter/fitter')
 export class FitterController {
   constructor(private readonly fitterService: FitterService) { }
 
   @Get("home")
+  @ApiOperation({ summary: 'Get fitter dashboard home data' })
   async home(@Request() { user }: { user: AuthUser }): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
@@ -20,6 +24,7 @@ export class FitterController {
   }
 
   @Get("my-jobs")
+  @ApiOperation({ summary: 'Get list of jobs assigned to logged-in fitter' })
   async myJobs(@Request() { user }: { user: AuthUser }, @Query() query: MyJobsFilterDto): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
@@ -28,6 +33,7 @@ export class FitterController {
   }
 
   @Get("job/:id")
+  @ApiOperation({ summary: 'Get job details by ID for fitter' })
   async getJobById(@Request() { user }: { user: AuthUser }, @Param("id") id: string): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
@@ -36,6 +42,7 @@ export class FitterController {
   }
 
   @Patch("job/:jobId/status")
+  @ApiOperation({ summary: 'Update job status by fitter' })
   async jobStatus(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() body: JobStatusDto): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
@@ -44,6 +51,7 @@ export class FitterController {
   }
 
   @Patch("job/cancel/:jobId")
+  @ApiOperation({ summary: 'Cancel a job by fitter' })
   async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: { reason: string }) {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");

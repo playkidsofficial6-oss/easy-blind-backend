@@ -11,7 +11,7 @@ export class MeasurementsService {
   constructor(
     @InjectModel(Job.name)
     private readonly jobModel: Model<JobDocument>,
-  ) {}
+  ) { }
 
   private processMeasurementData(
     dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
@@ -147,35 +147,4 @@ export class MeasurementsService {
     return job.measurements;
   }
 
-  async getMeasurementsByStaff(staffId: string): Promise<JobMeasurements[]> {
-    const jobs = await this.jobModel
-      .find({ 'measurements.assignedStaff': staffId })
-      .exec();
-
-    return jobs
-      .map((job) => job.measurements)
-      .filter((m): m is JobMeasurements => Boolean(m));
-  }
-
-  async getMeasurementSummary(id: string) {
-    const filter = isValidObjectId(id)
-      ? { $or: [{ _id: id }, { jobId: id }] }
-      : { jobId: id };
-
-    const job = await this.jobModel.findOne(filter).exec();
-    if (!job || !job.measurements) {
-      throw new NotFoundException(`Measurement for Job ID "${id}" not found`);
-    }
-
-    return {
-      id: job._id,
-      jobId: job.jobId || job._id.toString(),
-      status: job.measurements.status,
-      totalRooms: job.measurements.totalRooms,
-      totalOpenings: job.measurements.totalOpenings,
-      totalWindows: job.measurements.totalWindows,
-      totalDoors: job.measurements.totalDoors,
-      visitDate: job.measurements.visitDate,
-    };
-  }
 }

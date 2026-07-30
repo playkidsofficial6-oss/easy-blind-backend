@@ -22,14 +22,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { AuthUser } from 'src/helpers/AuthUser.type';
+import { AuthUser } from '../helpers/AuthUser.type';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get()
   @UseGuards(JwtAuthGuard)
@@ -38,6 +38,15 @@ export class UsersController {
   @ApiOkResponse({ description: 'Users returned successfully.' })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Get('fitters')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List fitter users merged with fitter profiles' })
+  @ApiOkResponse({ description: 'Fitters returned successfully.' })
+  findFitters() {
+    return this.usersService.findFitters();
   }
 
   @Get(':id')
@@ -115,13 +124,5 @@ export class UsersController {
     return this.usersService.checkOut(user.userId, body?.userId);
   }
 
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete an existing user' })
-  @ApiOkResponse({ description: 'User deleted successfully.' })
-  remove(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.usersService.remove(id);
-  }
+
 }

@@ -36,7 +36,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   @Post('register')
   @ApiOperation({
@@ -98,13 +98,5 @@ export class AuthController {
     return this.usersService.update(req.user.userId, updateUserDto);
   }
 
-  @Delete('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete the authenticated user account' })
-  @ApiOkResponse({ description: 'Profile deleted successfully.' })
-  deleteProfile(@Req() req: AuthenticatedRequest) {
-    return this.usersService.remove(req.user.userId);
-  }
+
 }

@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret-with-enough-length';
+process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-with-enough-length';
 process.env.JWT_EXPIRES_IN = '1h';
 
 import {
@@ -7,6 +8,7 @@ import {
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Server } from 'node:http';
@@ -75,6 +77,13 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
       }),
     );
 
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Easy Blind Backend API')
+      .setVersion('1.0.0')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/swagger', app, document);
+
     await app.init();
     httpServer = app.getHttpServer() as Server;
   }, 120000);
@@ -89,20 +98,33 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
   });
 
   it('creates, reads, updates, and deletes a job', async () => {
+    const registerResponse = await request(httpServer)
+      .post('/api/v1/auth/register')
+      .send({
+        name: 'Job Admin',
+        email: 'jobadmin@example.com',
+        password: 'SecurePass123!',
+        role: 'Owner',
+      })
+      .expect(201);
+    const token = (registerResponse.body as AuthResponse).accessToken;
+
     const createPayload = {
-      customerName: 'Aarav Sharma',
+      firstName: 'Aarav',
+      lastName: 'Sharma',
       customerEmail: 'aarav@example.com',
       customerPhone: '+919876543210',
       address: '12 MG Road, Bengaluru, Karnataka',
       productType: 'Motorized Blinds',
       quantity: 4,
-      priority: 'high',
+      priority: 'High',
       notes: 'Customer prefers afternoon appointment.',
       scheduledAt: '2026-05-20T10:30:00.000Z',
     };
 
     const createResponse = await request(httpServer)
       .post('/api/v1/jobs')
+      .set('Authorization', `Bearer ${token}`)
       .send(createPayload)
       .expect(201);
 
@@ -113,6 +135,7 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
 
     const listResponse = await request(httpServer)
       .get('/api/v1/jobs?search=aarav&limit=5&page=1')
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
     const jobList = listResponse.body as PaginatedJobsResponse;
     expect(jobList.items).toHaveLength(1);
@@ -120,25 +143,40 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
 
     const readResponse = await request(httpServer)
       .get(`/api/v1/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
     const readJob = readResponse.body as JobResponse;
-    expect(readJob.customerName).toBe(createPayload.customerName);
+    expect(readJob.customerEmail).toBe(createPayload.customerEmail);
 
     const updateResponse = await request(httpServer)
       .patch(`/api/v1/jobs/${jobId}`)
-      .send({ status: 'completed', quantity: 5 })
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'Completed', quantity: 5 })
       .expect(200);
     const updatedJob = updateResponse.body as JobResponse;
-    expect(updatedJob.status).toBe('completed');
+    expect(updatedJob.status).toBe('Completed');
     expect(updatedJob.quantity).toBe(5);
 
-    await request(httpServer).delete(`/api/v1/jobs/${jobId}`).expect(200);
-    await request(httpServer).get(`/api/v1/jobs/${jobId}`).expect(404);
+    await request(httpServer)
+      .delete(`/api/v1/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    await request(httpServer)
+      .get(`/api/v1/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
   });
 
   it('rejects invalid payloads with validation errors', async () => {
+    const loginResponse = await request(httpServer)
+      .post('/api/v1/auth/login')
+      .send({ email: 'jobadmin@example.com', password: 'SecurePass123!' })
+      .expect(200);
+    const token = (loginResponse.body as AuthResponse).accessToken;
+
     await request(httpServer)
       .post('/api/v1/jobs')
+      .set('Authorization', `Bearer ${token}`)
       .send({ customerName: 'A' })
       .expect(400);
   });
@@ -148,7 +186,7 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
       name: 'Meera Nair',
       email: 'meera@example.com',
       password: 'SecurePass123!',
-      role: 'owner',
+      role: 'Owner',
     };
 
     const registerResponse = await request(httpServer)
@@ -217,5 +255,14 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
 
     expect(users.length).toBeGreaterThanOrEqual(1);
     expect(users.every((user) => user.passwordHash === undefined)).toBe(true);
+  });
+
+  it('serves Swagger documentation UI at /api/swagger and document JSON at /api/swagger-json', async () => {
+    const res = await request(httpServer).get('/api/swagger/').expect(200);
+    expect(res.text).toContain('swagger-ui');
+
+    const jsonRes = await request(httpServer).get('/api/swagger-json').expect(200);
+    expect(jsonRes.body.openapi).toBeDefined();
+    expect(jsonRes.body.info.title).toBe('Easy Blind Backend API');
   });
 });

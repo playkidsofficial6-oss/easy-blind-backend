@@ -55,7 +55,7 @@ export class FitterService {
             if (job.status === JobStatus.Pending) {
                 pending++;
             }
-            if (job.status === JobStatus.Scheduled || job.status === JobStatus.FitterAssigned) {
+            if (job.status === JobStatus.FitterAssigned) {
                 scheduled++;
             }
             if (job.status === JobStatus.Completed) {
@@ -74,8 +74,7 @@ export class FitterService {
                 job.status === JobStatus.FitterOnTheWay ||
                 job.status === JobStatus.FitterReached ||
                 job.status === JobStatus.Fitting ||
-                job.status === JobStatus.TakingPhotos ||
-                job.status === JobStatus.InProgress;
+                job.status === JobStatus.TakingPhotos;
 
             if (isJobToday) {
                 todayJobs.push(job);
@@ -195,8 +194,7 @@ export class FitterService {
                 job.status === JobStatus.FitterOnTheWay ||
                 job.status === JobStatus.FitterReached ||
                 job.status === JobStatus.Fitting ||
-                job.status === JobStatus.TakingPhotos ||
-                job.status === JobStatus.InProgress;
+                job.status === JobStatus.TakingPhotos;
 
             if (taskFilter === 'Today') {
                 return isToday;

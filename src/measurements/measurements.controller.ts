@@ -5,12 +5,12 @@ import { MeasurementsService } from './measurements.service';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
 
-@ApiTags('Measurements')
+@ApiTags('measurements')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('measurements')
 export class MeasurementsController {
-  constructor(private readonly measurementsService: MeasurementsService) {}
+  constructor(private readonly measurementsService: MeasurementsService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new measurement record' })
@@ -33,17 +33,4 @@ export class MeasurementsController {
     return this.measurementsService.getMeasurementByJobId(jobId);
   }
 
-  @Get('staff/:staffId')
-  @ApiOperation({ summary: 'Retrieve measurements assigned to a staff member' })
-  async getByStaff(@Param('staffId') staffId: string) {
-    return this.measurementsService.getMeasurementsByStaff(staffId);
-  }
-
-  @Get(':id/summary')
-  @ApiOperation({
-    summary: 'Retrieve a quick statistical summary of a measurement',
-  })
-  async getSummary(@Param('id') id: string) {
-    return this.measurementsService.getMeasurementSummary(id);
-  }
 }

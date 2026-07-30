@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
-import { Job, JobDocument, JobStatus } from 'src/jobs/schemas/job.schema';
+import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
 
@@ -61,7 +61,7 @@ export class SalesManService {
             if (job.status === JobStatus.Pending) {
                 pending++;
             }
-            if (job.status === JobStatus.Scheduled) {
+            if (job.status === JobStatus.SalesmanScheduled) {
                 scheduled++;
             }
             if (job.status === JobStatus.Completed || job.status === JobStatus.ReadyForFitting) {
@@ -78,8 +78,7 @@ export class SalesManService {
             const isJobToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
                 job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring ||
-                job.status === JobStatus.InProgress;
+                job.status === JobStatus.Measuring;
 
             if (isJobToday) {
                 todayJobs.push(job);
@@ -193,8 +192,7 @@ export class SalesManService {
             const isToday =
                 (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
                 job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring ||
-                job.status === JobStatus.InProgress;
+                job.status === JobStatus.Measuring;
 
             if (taskFilter === 'Today') {
                 return isToday;

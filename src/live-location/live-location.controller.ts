@@ -34,7 +34,7 @@ export class LiveLocationController {
   constructor(
     private readonly liveLocationService: LiveLocationService,
     private readonly liveLocationGateway: LiveLocationGateway,
-  ) {}
+  ) { }
 
   @Post('update')
   @ApiOperation({
@@ -74,16 +74,4 @@ export class LiveLocationController {
     return this.liveLocationService.findByUserId(request.user, userId);
   }
 
-  @Delete(':userId')
-  @ApiOperation({
-    summary:
-      'Delete a live location by user id for owner and sales manager users',
-  })
-  @ApiOkResponse({ description: 'Live location deleted successfully.' })
-  deleteByUserId(
-    @Req() request: AuthenticatedRequest,
-    @Param('userId', ParseObjectIdPipe) userId: string,
-  ) {
-    return this.liveLocationService.deleteByUserId(request.user, userId);
-  }
 }

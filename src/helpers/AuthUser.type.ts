@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { UserRole } from "src/users/schemas/user.schema";
+import { UserRole } from "../users/schemas/user.schema";
 
 export interface AuthUser {
     userId: Types.ObjectId,

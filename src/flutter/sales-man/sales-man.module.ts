@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { SalesManService } from './sales-man.service';
 import { SalesManController } from './sales-man.controller';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Job, JobSchema } from 'src/jobs/schemas/job.schema';
+import { Job, JobSchema } from '../../jobs/schemas/job.schema';
 
 @Module({
   imports: [

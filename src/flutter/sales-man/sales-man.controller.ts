@@ -1,18 +1,21 @@
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Query, Request, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SalesManService } from './sales-man.service';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { AuthUser } from 'src/helpers/AuthUser.type';
-import { UserRole } from 'src/users/schemas/user.schema';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AuthUser } from '../../helpers/AuthUser.type';
+import { UserRole } from '../../users/schemas/user.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
 
-
+@ApiTags('flutter-salesman')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('flutter/sales-man')
 export class SalesManController {
   constructor(private readonly salesManService: SalesManService) { }
 
   @Get("home")
+  @ApiOperation({ summary: 'Get salesman dashboard home data' })
   async home(@Request() { user }: { user: AuthUser }): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
@@ -21,6 +24,7 @@ export class SalesManController {
   }
 
   @Get("my-jobs")
+  @ApiOperation({ summary: 'Get list of jobs assigned to logged-in salesman' })
   async myJobs(@Request() { user }: { user: AuthUser }, @Query() query: MyJobsFilterDto): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
@@ -29,6 +33,7 @@ export class SalesManController {
   }
 
   @Get("job/:id")
+  @ApiOperation({ summary: 'Get job details by ID for salesman' })
   async getJobById(@Request() { user }: { user: AuthUser }, @Param("id") id: string): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
@@ -37,6 +42,7 @@ export class SalesManController {
   }
 
   @Patch("job/:jobId/status")
+  @ApiOperation({ summary: 'Update job status by salesman' })
   async jobStatus(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() body: JobStatusDto): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
@@ -45,6 +51,7 @@ export class SalesManController {
   }
 
   @Patch("job/cancel/:jobId")
+  @ApiOperation({ summary: 'Cancel a job by salesman' })
   async cancelJob(@Request() { user }: { user: AuthUser }, @Param("jobId") jobId: string, @Body() dto: { reason: string }) {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route");

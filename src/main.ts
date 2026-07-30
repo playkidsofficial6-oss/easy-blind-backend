@@ -33,16 +33,35 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Easy Blind Backend API')
     .setDescription(
-      'Production-style NestJS API for Easy-Blinds job, authentication, and user management.',
+      'NestJS API for Easy-Blinds job, authentication, user management, fitters, measurements, live location, and Flutter app integrations.',
     )
     .setVersion('1.0.0')
-    .addTag('auth')
-    .addTag('users')
-    .addTag('jobs')
-    .addTag('health')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter JWT Bearer token',
+        in: 'header',
+      },
+      'bearer',
+    )
+    .addTag('auth', 'Authentication and profile operations')
+    .addTag('users', 'User management, password resets, check-in/out')
+    .addTag('jobs', 'Core job management and workflow transitions')
+    .addTag('measurements', 'Job measurement records and summaries')
+    .addTag('live-location', 'Real-time salesman/fitter location tracking')
+    .addTag('flutter-salesman', 'Flutter salesman app endpoints')
+    .addTag('flutter-fitter', 'Flutter fitter app endpoints')
     .build();
+
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('api/swagger', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   const port = configService.get<number>('PORT', 3001);
   await app.listen(port);

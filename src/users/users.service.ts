@@ -109,6 +109,31 @@ export class UsersService {
     return users.map((user) => this.toResponse(user));
   }
 
+  async findFitters(): Promise<any[]> {
+    const users = await this.userModel
+      .find({ role: UserRole.Fitter })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return users.map((user) => {
+      const plainUser = user.toObject() as any;
+      const userIdStr = plainUser._id.toString();
+      return {
+        _id: userIdStr,
+        userId: userIdStr,
+        user: this.toResponse(user),
+        phone: plainUser.phone,
+        location: plainUser.location,
+        status: plainUser.liveStatus ?? 'Available',
+        capacity: plainUser.maxDailyJobs ?? 5,
+        skills: plainUser.skills ?? [],
+        notes: plainUser.notes,
+        createdAt: plainUser.createdAt,
+        updatedAt: plainUser.updatedAt,
+      };
+    });
+  }
+
   async findById(id: string): Promise<UserResponse> {
     const user = await this.userModel.findById(id).exec();
 
@@ -223,15 +248,7 @@ export class UsersService {
     }
   }
 
-  async remove(id: string): Promise<{ deleted: true; id: string }> {
-    const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
 
-    if (!deletedUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    return { deleted: true, id };
-  }
 
   async checkIn(userId: string | mongoose.Types.ObjectId, targetUserId?: string) {
     const idToUpdate = targetUserId || userId;
