@@ -11,7 +11,7 @@ export class MyJobsFilterDto {
     @ApiPropertyOptional({ example: "All", description: "Date range filter" })
     @IsIn(["All", "Today", "Tomorrow", "Yesterday", "Week", "Month"])
     @IsOptional()
-    date?: string = "All";
+    date?: "All" | "Today" | "Tomorrow" | "Yesterday" | "Week" | "Month" = "All";
 
     @ApiPropertyOptional({ enum: JobStatus, description: "Job status filter" })
     @IsEnum(JobStatus)

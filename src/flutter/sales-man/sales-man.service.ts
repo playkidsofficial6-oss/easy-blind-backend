@@ -100,6 +100,38 @@ export class SalesManService {
             ];
         }
 
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+        const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+        const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const endOfWeek = new Date(endOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        const startOfMonth = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const endOfMonth = new Date(endOfToday.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+        const endOfYesterday = new Date(endOfToday.getTime() - 24 * 60 * 60 * 1000);
+
+        if (query.date === "Today") {
+            mongoQuery.scheduledAt = { $gte: startOfToday, $lte: endOfToday };
+        }
+        if (query.date === "Tomorrow") {
+            mongoQuery.scheduledAt = { $gte: startOfTomorrow, $lte: endOfTomorrow };
+        }
+        if (query.date === "Yesterday") {
+            mongoQuery.scheduledAt = { $gte: startOfYesterday, $lte: endOfYesterday };
+        }
+        if (query.date === "Week") {
+            mongoQuery.scheduledAt = { $gte: startOfWeek, $lte: endOfWeek };
+        }
+        if (query.date === "Month") {
+            mongoQuery.scheduledAt = { $gte: startOfMonth, $lte: endOfMonth };
+        }
+
         const jobs = await this.jobModel
             .find(mongoQuery)
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
@@ -108,74 +140,16 @@ export class SalesManService {
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
-        const taskFilter = query?.date || 'All';
-        if (taskFilter === 'All') {
-            return {
-                message: "My job page datas are fetched successfully",
-                data: jobs,
-            };
-        }
 
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-        const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-        const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-        const filteredJobs = jobs.filter((job) => {
-            const isCompleted =
-                job.status === JobStatus.Completed ||
-                job.status === JobStatus.ReadyForFitting;
 
-            const isCancelled = job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled;
 
-            if (taskFilter === 'Completed') {
-                return isCompleted;
-            }
-            if (taskFilter === 'Cancelled') {
-                return isCancelled;
-            }
 
-            if (isCompleted || isCancelled) {
-                return false;
-            }
-
-            const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt) : null;
-
-            const isToday =
-                (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring;
-
-            if (taskFilter === 'Today') {
-                return isToday;
-            }
-
-            if (isToday) {
-                return false;
-            }
-
-            if (scheduledDate) {
-                if (scheduledDate >= startOfTomorrow && scheduledDate <= endOfTomorrow) {
-                    return taskFilter === 'Tomorrow';
-                }
-                if (scheduledDate > endOfTomorrow) {
-                    return taskFilter === 'Upcoming';
-                }
-                if (scheduledDate < startOfToday) {
-                    return taskFilter === 'Delayed';
-                }
-            } else {
-                return taskFilter === 'Upcoming';
-            }
-
-            return false;
-        });
 
         return {
             message: "My job page datas are fetched successfully",
-            data: filteredJobs,
+            data: jobs,
         };
     }
 
