@@ -69,12 +69,6 @@ export class User {
   @Prop({ enum: UserRole, default: UserRole.User, index: true })
   role: UserRole;
 
-  @Prop({ trim: true, maxlength: 30 })
-  phone?: string;
-
-  @Prop({ trim: true, maxlength: 500 })
-  avatar?: string;
-
   @Prop({
     enum: [
       'Available',
@@ -89,15 +83,6 @@ export class User {
 
   @Prop({ type: UserLocationSchema })
   location?: UserLocation;
-
-  @Prop({ type: Number, min: 1, max: 20, default: 5 })
-  maxDailyJobs?: number;
-
-  @Prop({ type: [String], default: [] })
-  skills?: string[];
-
-  @Prop({ trim: true, maxlength: 1000 })
-  notes?: string;
 
   @Prop({ type: Boolean, default: true, index: true })
   isOnline?: boolean;

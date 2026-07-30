@@ -27,11 +27,8 @@ export interface UserResponse {
   name: string;
   email: string;
   role: UserRole;
-  phone?: string;
-  avatar?: string;
   liveStatus?: UserStatus;
   location?: UserLocation;
-  maxDailyJobs?: number;
   checkedIn?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -56,11 +53,8 @@ type UserUpdatePayload = Partial<
     | 'email'
     | 'passwordHash'
     | 'role'
-    | 'phone'
-    | 'avatar'
     | 'status'
     | 'location'
-    | 'maxDailyJobs'
   >
 >;
 
@@ -121,13 +115,8 @@ export class UsersService {
       return {
         _id: userIdStr,
         userId: userIdStr,
-        user: this.toResponse(user),
-        phone: plainUser.phone,
         location: plainUser.location,
         status: plainUser.status ?? 'Available',
-        capacity: plainUser.maxDailyJobs ?? 5,
-        skills: plainUser.skills ?? [],
-        notes: plainUser.notes,
         createdAt: plainUser.createdAt,
         updatedAt: plainUser.updatedAt,
       };
@@ -202,14 +191,6 @@ export class UsersService {
       updatePayload.role = updateUserDto.role;
     }
 
-    if (updateUserDto.phone !== undefined) {
-      updatePayload.phone = updateUserDto.phone.trim();
-    }
-
-    if (updateUserDto.avatar !== undefined) {
-      updatePayload.avatar = updateUserDto.avatar.trim();
-    }
-
     if (updateUserDto.liveStatus !== undefined) {
       updatePayload.status = updateUserDto.liveStatus;
     }
@@ -221,10 +202,6 @@ export class UsersService {
         address: updateUserDto.location.address,
         updatedAt: new Date(),
       };
-    }
-
-    if (updateUserDto.maxDailyJobs !== undefined) {
-      updatePayload.maxDailyJobs = updateUserDto.maxDailyJobs;
     }
 
     try {
@@ -290,11 +267,8 @@ export class UsersService {
       name: plainUser.name,
       email: plainUser.email,
       role: plainUser.role,
-      phone: plainUser.phone,
-      avatar: plainUser.avatar,
       liveStatus: plainUser.status,
       location: plainUser.location,
-      maxDailyJobs: plainUser.maxDailyJobs,
       checkedIn: plainUser.checkedIn ?? true,
       createdAt: plainUser.createdAt,
       updatedAt: plainUser.updatedAt,

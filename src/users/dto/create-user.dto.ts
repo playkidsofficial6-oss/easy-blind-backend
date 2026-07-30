@@ -60,18 +60,6 @@ export class CreateUserDto {
   @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiPropertyOptional({ example: '+971 50 123 4567' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  phone?: string;
-
-  @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  avatar?: string;
-
   @ApiPropertyOptional({
     enum: [
       'Available',
@@ -100,13 +88,6 @@ export class CreateUserDto {
   @ValidateNested()
   @Type(() => UserLocationDto)
   location?: UserLocationDto;
-
-  @ApiPropertyOptional({ example: 5 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(20)
-  maxDailyJobs?: number;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
