@@ -143,21 +143,16 @@ export class SalesManService {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
-        const salesmanStr = salesmanId ? salesmanId.toString() : '';
+
 
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            $or: [
-                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
-                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
-            ],
+            assignedSalesman: salesmanId
         });
 
         if (!job) {
             throw new NotFoundException("Job not found or not assigned to you");
         }
-        console.log(dto);
         job.status = dto.status;
         job.customerNote = dto.customerNote;
         await job.save();
@@ -171,15 +166,11 @@ export class SalesManService {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
-        const salesmanStr = salesmanId ? salesmanId.toString() : '';
+
 
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            $or: [
-                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
-                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
-            ],
+            assignedSalesman: salesmanId
         });
 
         if (!job) {
@@ -206,10 +197,8 @@ export class SalesManService {
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            $or: [
-                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
-                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
-            ],
+            assignedSalesman: salesmanId,
+
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
             .populate('assignedFitter', 'name email role phone status liveStatus')
@@ -231,10 +220,7 @@ export class SalesManService {
         const userStr = user ? user.toString() : '';
 
         const jobs = await this.jobModel.find({
-            $or: [
-                ...(userObjectId ? [{ assignedSalesman: userObjectId }] : []),
-                ...(userStr ? [{ assignedSalesman: userStr }] : []),
-            ],
+            assignedSalesman: user,
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')

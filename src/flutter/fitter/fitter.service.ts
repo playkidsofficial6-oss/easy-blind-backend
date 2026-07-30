@@ -173,15 +173,9 @@ export class FitterService {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
-        const fitterStr = fitterId ? fitterId.toString() : '';
-
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            $or: [
-                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
-                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
-            ],
+            assignedFitter: fitterId,
         });
 
         if (!job) {
@@ -204,15 +198,11 @@ export class FitterService {
             throw new BadRequestException("Invalid job ID");
         }
         const jobObjectId = new Types.ObjectId(jobId);
-        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
-        const fitterStr = fitterId ? fitterId.toString() : '';
+
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            $or: [
-                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
-                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
-            ],
+            assignedFitter: fitterId
         })
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
@@ -230,15 +220,9 @@ export class FitterService {
     }
 
     async completedJobs(user: mongoose.Types.ObjectId | string) {
-        const isHexId = Types.ObjectId.isValid(user);
-        const userObjectId = isHexId ? new Types.ObjectId(user) : null;
-        const userStr = user ? user.toString() : '';
 
         const jobs = await this.jobModel.find({
-            $or: [
-                ...(userObjectId ? [{ assignedFitter: userObjectId }] : []),
-                ...(userStr ? [{ assignedFitter: userStr }] : []),
-            ],
+            assignedFitter: user,
             status: { $in: [JobStatus.Completed] },
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
