@@ -9,7 +9,7 @@ export class MyJobsFilterDto {
 
 
     @ApiPropertyOptional({ example: "All", description: "Date range filter" })
-    @IsIn(["All", "Today", "Tomorrow", "Yesterday", "Week", "Month"])
+    @IsEnum(["All", "Today", "Tomorrow", "Yesterday", "Week", "Month"])
     @IsOptional()
     date?: "All" | "Today" | "Tomorrow" | "Yesterday" | "Week" | "Month" = "All";
 
@@ -24,7 +24,7 @@ export class MyJobsFilterDto {
     priority?: JobPriority;
 
     @ApiPropertyOptional({ example: "Villa", description: "Property type filter" })
-    @IsIn(['Villa', 'Apartment', 'Townhouse', 'Office', 'Other'])
+    @IsEnum(['Villa', 'Apartment', 'Townhouse', 'Office', 'Other'])
     @IsOptional()
     propertyType?: "Villa" | "Apartment" | "Townhouse" | "Office" | "Other";
 }
