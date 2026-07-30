@@ -80,13 +80,13 @@ export class SalesManService {
         if (query?.q) {
             mongoQuery.$or = [
                 {
-                    firstname: {
+                    firstName: {
                         $regex: query.q,
                         $options: 'i',
                     },
                 },
                 {
-                    lastname: {
+                    lastName: {
                         $regex: query.q,
                         $options: 'i',
                     },
@@ -108,7 +108,7 @@ export class SalesManService {
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
-        const taskFilter = (query as any)?.taskFilter || query?.date || 'All';
+        const taskFilter = query?.date || 'All';
         if (taskFilter === 'All') {
             return {
                 message: "My job page datas are fetched successfully",

@@ -127,13 +127,13 @@ export class FitterService {
         if (query?.q) {
             mongoQuery.$or = [
                 {
-                    firstname: {
+                    firstName: {
                         $regex: query.q,
                         $options: 'i',
                     },
                 },
                 {
-                    lastname: {
+                    lastName: {
                         $regex: query.q,
                         $options: 'i',
                     },
