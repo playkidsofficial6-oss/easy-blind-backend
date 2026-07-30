@@ -614,14 +614,6 @@ export class JobsService implements OnModuleInit {
     const dateUpdates: Record<string, Date> = {};
     if (safeUpdateDto.scheduledAt)
       dateUpdates.scheduledAt = new Date(safeUpdateDto.scheduledAt);
-    if (safeUpdateDto.timerStartedAt)
-      dateUpdates.timerStartedAt = new Date(safeUpdateDto.timerStartedAt);
-    if (safeUpdateDto.travelStartedAt)
-      dateUpdates.travelStartedAt = new Date(safeUpdateDto.travelStartedAt);
-    if (safeUpdateDto.measurementStartedAt)
-      dateUpdates.measurementStartedAt = new Date(
-        safeUpdateDto.measurementStartedAt,
-      );
     if (safeUpdateDto.measurementCompletedAt)
       dateUpdates.measurementCompletedAt = new Date(
         safeUpdateDto.measurementCompletedAt,
@@ -661,10 +653,9 @@ export class JobsService implements OnModuleInit {
     id: string,
     workflowDto: SalesmanWorkflowDto,
   ): Promise<JobDocument> {
-    const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
       jobStatus: JobStatus.SalesmanOnTheWay,
-      timestamps: { travelStartedAt: now },
+      timestamps: {},
     });
   }
 
@@ -672,10 +663,9 @@ export class JobsService implements OnModuleInit {
     id: string,
     workflowDto: SalesmanWorkflowDto,
   ): Promise<JobDocument> {
-    const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
       jobStatus: JobStatus.Measuring,
-      timestamps: { measurementStartedAt: now, timerStartedAt: now },
+      timestamps: {},
     });
   }
 
@@ -685,7 +675,7 @@ export class JobsService implements OnModuleInit {
   ): Promise<JobDocument> {
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
-      jobStatus: JobStatus.ReadyForFitting,
+      jobStatus: JobStatus.Quoting,
       timestamps: { measurementCompletedAt: now },
     });
   }

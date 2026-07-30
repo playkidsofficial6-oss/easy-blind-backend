@@ -145,18 +145,18 @@ describe('FitterService', () => {
     it('should return home page statistics and today jobs', async () => {
       const today = new Date();
       const jobToday = mockJobDoc({ scheduledAt: today, status: JobStatus.FitterAssigned });
-      const jobPending = mockJobDoc({ scheduledAt: null, status: JobStatus.Pending });
-      const jobCompleted = mockJobDoc({ scheduledAt: null, status: JobStatus.Completed });
 
       jobModelMock.find.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([jobToday, jobPending, jobCompleted]),
+        exec: jest.fn().mockResolvedValue([jobToday]),
+      });
+      jobModelMock.countDocuments = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(1),
       });
 
       const res = await service.home(mockFitterId);
       expect(res.message).toBe('All home page datas are fetched successfully');
-      expect(res.data.pending).toBe(1);
       expect(res.data.completed).toBe(1);
       expect(res.data.todayJobs).toHaveLength(1);
     });

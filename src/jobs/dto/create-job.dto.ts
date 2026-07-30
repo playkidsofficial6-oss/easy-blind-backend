@@ -97,25 +97,10 @@ export class CreateJobDto {
   @IsString()
   assignedSalesManager?: string;
 
-  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
-  @IsOptional()
-  @IsDateString()
-  timerStartedAt?: string;
-
   @ApiPropertyOptional({ example: 'user_id_of_salesman' })
   @IsOptional()
   @IsString()
   assignedSalesman?: string;
-
-  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
-  @IsOptional()
-  @IsDateString()
-  travelStartedAt?: string;
-
-  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
-  @IsOptional()
-  @IsDateString()
-  measurementStartedAt?: string;
 
   @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
   @IsOptional()

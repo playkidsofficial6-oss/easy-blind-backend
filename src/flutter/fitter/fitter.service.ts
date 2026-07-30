@@ -12,18 +12,6 @@ export class FitterService {
     ) { }
 
     async home(assignedFitter: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedFitter);
-        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
-
-        const fitterQuery = fitterObjectId ? { assignedFitter: fitterObjectId } : {};
-
-        const jobs = await this.jobModel
-            .find(fitterQuery)
-            .populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
-            .sort({ scheduledAt: 1, createdAt: -1 })
-            .exec();
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -32,65 +20,32 @@ export class FitterService {
         const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-        const todayJobs: JobDocument[] = [];
+        const jobs = await this.jobModel
+            .find({ assignedFitter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.Fitting, JobStatus.TakingPhotos] } })
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
+            .sort({ scheduledAt: 1, createdAt: -1 })
+            .exec();
+
+        const todayJobs: JobDocument[] = jobs;
         let tommorow = 0;
         let upcoming = 0;
-        let pending = 0;
-        let scheduled = 0;
         let completed = 0;
         let cancelled = 0;
-        let delayed = 0;
 
-        for (const job of jobs) {
-            if (job.status === JobStatus.Pending) {
-                pending++;
-            }
-            if (job.status === JobStatus.FitterAssigned) {
-                scheduled++;
-            }
-            if (job.status === JobStatus.Completed) {
-                completed++;
-                continue;
-            }
-            if (job.status === JobStatus.Cancelled || job.status === JobStatus.FitterCancelled || job.status === JobStatus.SalesmanCancelled) {
-                cancelled++;
-                continue;
-            }
-
-            const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt) : null;
-
-            const isJobToday =
-                (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.FitterOnTheWay ||
-                job.status === JobStatus.FitterReached ||
-                job.status === JobStatus.Fitting ||
-                job.status === JobStatus.TakingPhotos;
-
-            if (isJobToday) {
-                todayJobs.push(job);
-            } else if (scheduledDate) {
-                if (scheduledDate >= startOfTomorrow && scheduledDate <= endOfTomorrow) {
-                    tommorow++;
-                } else if (scheduledDate > endOfTomorrow) {
-                    upcoming++;
-                } else if (scheduledDate < startOfToday) {
-                    delayed++;
-                }
-            } else {
-                upcoming++;
-            }
-        }
+        tommorow = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
+        upcoming = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
+        completed = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: { $in: [JobStatus.Completed] } }).exec();
+        cancelled = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: { $in: [JobStatus.FitterCancelled, JobStatus.Cancelled] } }).exec();
 
         return {
             message: "All home page datas are fetched successfully",
             data: {
                 tommorow,
                 upcoming,
-                pending,
-                scheduled,
                 completed,
                 cancelled,
-                delayed,
                 todayJobs
             }
         };
@@ -100,16 +55,7 @@ export class FitterService {
         const isHexId = Types.ObjectId.isValid(assignedFitter);
         const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
 
-        const baseFitterFilter = {
-            $or: [
-                ...(fitterObjectId
-                    ? [
-                        { assignedFitter: fitterObjectId },
-                        { assignedFitter: fitterObjectId },
-                    ]
-                    : []),
-            ],
-        };
+        const baseFitterFilter = fitterObjectId ? { assignedFitter: fitterObjectId } : {};
 
         const mongoQuery: any = { ...baseFitterFilter };
 
@@ -147,6 +93,38 @@ export class FitterService {
             ];
         }
 
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+        const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+        const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const endOfWeek = new Date(endOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        const startOfMonth = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const endOfMonth = new Date(endOfToday.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+        const endOfYesterday = new Date(endOfToday.getTime() - 24 * 60 * 60 * 1000);
+
+        if (query.date === "Today") {
+            mongoQuery.scheduledAt = { $gte: startOfToday, $lte: endOfToday };
+        }
+        if (query.date === "Tomorrow") {
+            mongoQuery.scheduledAt = { $gte: startOfTomorrow, $lte: endOfTomorrow };
+        }
+        if (query.date === "Yesterday") {
+            mongoQuery.scheduledAt = { $gte: startOfYesterday, $lte: endOfYesterday };
+        }
+        if (query.date === "Week") {
+            mongoQuery.scheduledAt = { $gte: startOfWeek, $lte: endOfWeek };
+        }
+        if (query.date === "Month") {
+            mongoQuery.scheduledAt = { $gte: startOfMonth, $lte: endOfMonth };
+        }
+
         const jobs = await this.jobModel
             .find(mongoQuery)
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
@@ -155,99 +133,9 @@ export class FitterService {
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
-        const taskFilter = (query as any)?.taskFilter || query?.date || 'All';
-        if (taskFilter === 'All') {
-            return {
-                message: "My job page datas are fetched successfully",
-                data: jobs,
-            };
-        }
-
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-        const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-        const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
-
-        const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
-        const endOfYesterday = new Date(startOfToday.getTime() - 1);
-
-        const dayOfWeek = now.getDay();
-        const startOfWeek = new Date(startOfToday.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
-        const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
-
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-        const filteredJobs = jobs.filter((job) => {
-            const isCompleted = job.status === JobStatus.Completed;
-
-            const isCancelled =
-                job.status === JobStatus.Cancelled ||
-                job.status === JobStatus.FitterCancelled ||
-                job.status === JobStatus.SalesmanCancelled;
-
-            if (taskFilter === 'Completed') {
-                return isCompleted;
-            }
-            if (taskFilter === 'Cancelled') {
-                return isCancelled;
-            }
-
-            if (isCompleted || isCancelled) {
-                return false;
-            }
-
-            const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt) : null;
-
-            const isToday =
-                (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.FitterOnTheWay ||
-                job.status === JobStatus.FitterReached ||
-                job.status === JobStatus.Fitting ||
-                job.status === JobStatus.TakingPhotos;
-
-            if (taskFilter === 'Today') {
-                return isToday;
-            }
-
-            if (taskFilter === 'Yesterday') {
-                return !!(scheduledDate && scheduledDate >= startOfYesterday && scheduledDate <= endOfYesterday);
-            }
-
-            if (taskFilter === 'Week') {
-                return !!(scheduledDate && scheduledDate >= startOfWeek && scheduledDate <= endOfWeek);
-            }
-
-            if (taskFilter === 'Month') {
-                return !!(scheduledDate && scheduledDate >= startOfMonth && scheduledDate <= endOfMonth);
-            }
-
-            if (isToday) {
-                return false;
-            }
-
-            if (scheduledDate) {
-                if (scheduledDate >= startOfTomorrow && scheduledDate <= endOfTomorrow) {
-                    return taskFilter === 'Tomorrow';
-                }
-                if (scheduledDate > endOfTomorrow) {
-                    return taskFilter === 'Upcoming';
-                }
-                if (scheduledDate < startOfToday) {
-                    return taskFilter === 'Delayed';
-                }
-            } else {
-                return taskFilter === 'Upcoming';
-            }
-
-            return false;
-        });
-
         return {
             message: "My job page datas are fetched successfully",
-            data: filteredJobs,
+            data: jobs,
         };
     }
 
@@ -274,7 +162,7 @@ export class FitterService {
         }
 
         job.status = dto.status;
-        job.customerNote = dto.customerNote
+        job.customerNote = dto.customerNote;
         await job.save();
         return {
             message: "Job status updated successfully",
@@ -341,6 +229,26 @@ export class FitterService {
             data: job,
         };
     }
+
+    async completedJobs(user: mongoose.Types.ObjectId | string) {
+        const isHexId = Types.ObjectId.isValid(user);
+        if (!isHexId) {
+            throw new BadRequestException("Invalid user ID");
+        }
+        const userObjectId = new Types.ObjectId(user);
+        const jobs = await this.jobModel.find({
+            assignedFitter: userObjectId,
+            status: { $in: [JobStatus.Completed] },
+        }).populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
+            .sort({ scheduledAt: 1, createdAt: -1 })
+            .exec();
+        return {
+            message: "Completed jobs fetched successfully",
+            data: jobs,
+        };
+    }
 }
 
 interface HomeResponseType {
@@ -348,11 +256,8 @@ interface HomeResponseType {
     data: {
         tommorow: number;
         upcoming: number;
-        pending: number;
-        scheduled: number;
         completed: number;
         cancelled: number;
-        delayed: number;
         todayJobs: JobDocument[];
     };
 }

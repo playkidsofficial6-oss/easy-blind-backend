@@ -86,7 +86,7 @@ export class MeasurementsService {
 
     const updateFields: Record<string, any> = { measurements: summaryData };
     if (createDto.status === 'Completed' || summaryData.status === 'Completed') {
-      updateFields.status = JobStatus.ReadyForFitting;
+      updateFields.status = JobStatus.Quoting;
     }
 
     const updatedJob = await this.jobModel
@@ -115,7 +115,7 @@ export class MeasurementsService {
 
     const updateFields: Record<string, any> = { measurements: summaryData };
     if (updateDto.status === 'Completed' || summaryData.status === 'Completed') {
-      updateFields.status = JobStatus.ReadyForFitting;
+      updateFields.status = JobStatus.Quoting;
     }
 
     const updated = await this.jobModel

@@ -33,6 +33,15 @@ export class FitterController {
     return await this.fitterService.myJobs(user.userId, query);
   }
 
+  @Get("job/completed")
+  @ApiOperation({ summary: 'Get list of completed jobs for logged-in fitter' })
+  async completedJobs(@Request() { user }: { user: AuthUser }): Promise<any> {
+    if (user.role !== UserRole.Fitter) {
+      throw new ForbiddenException("You are not authorized to access this route");
+    }
+    return await this.fitterService.completedJobs(user.userId);
+  }
+
   @Get("job/:id")
   @ApiOperation({ summary: 'Get job details by ID for fitter' })
   async getJobById(@Request() { user }: { user: AuthUser }, @Param("id") id: string): Promise<any> {

@@ -282,12 +282,6 @@ export class Job {
   assignedSalesman?: Types.ObjectId;
 
   @Prop()
-  travelStartedAt?: Date;
-
-  @Prop()
-  measurementStartedAt?: Date;
-
-  @Prop()
   measurementCompletedAt?: Date;
 
   @Prop({
@@ -324,8 +318,6 @@ export class Job {
   @Prop({ type: String, required: false })
   cancelReason?: string;
 
-  @Prop()
-  timerStartedAt?: Date;
 
   @Prop({ type: JobMeasurementsSchema, required: false })
   measurements?: JobMeasurements;
