@@ -92,15 +92,10 @@ export class CreateJobDto {
   @IsDateString()
   scheduledAt?: string;
 
-  @ApiPropertyOptional({ example: 'John Doe' })
+  @ApiPropertyOptional({ example: 'user_id_of_sales_manager' })
   @IsOptional()
   @IsString()
-  assignedTo?: string;
-
-  @ApiPropertyOptional({ example: 'Admin User' })
-  @IsOptional()
-  @IsString()
-  assignedBy?: string;
+  assignedSalesManager?: string;
 
   @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
   @IsOptional()
@@ -111,17 +106,6 @@ export class CreateJobDto {
   @IsOptional()
   @IsString()
   assignedSalesman?: string;
-
-
-  @ApiPropertyOptional({ example: 'user_id_of_salesman' })
-  @IsOptional()
-  @IsString()
-  activeSalesmanId?: string;
-
-  @ApiPropertyOptional({ example: 'John Doe' })
-  @IsOptional()
-  @IsString()
-  activeSalesmanName?: string;
 
   @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
   @IsOptional()

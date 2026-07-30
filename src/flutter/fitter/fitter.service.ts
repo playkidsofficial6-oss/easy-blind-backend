@@ -15,23 +15,13 @@ export class FitterService {
         const isHexId = Types.ObjectId.isValid(assignedFitter);
         const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
 
-        const fitterQuery = {
-            $or: [
-                ...(fitterObjectId
-                    ? [
-                        { assignedFitter: fitterObjectId },
-                        { assignedTo: fitterObjectId },
-                    ]
-                    : []),
-            ],
-        };
+        const fitterQuery = fitterObjectId ? { assignedFitter: fitterObjectId } : {};
 
         const jobs = await this.jobModel
             .find(fitterQuery)
-            .populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -115,7 +105,7 @@ export class FitterService {
                 ...(fitterObjectId
                     ? [
                         { assignedFitter: fitterObjectId },
-                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
                     ]
                     : []),
             ],
@@ -159,10 +149,9 @@ export class FitterService {
 
         const jobs = await this.jobModel
             .find(mongoQuery)
-            .populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -273,7 +262,7 @@ export class FitterService {
             ...(fitterObjectId
                 ? {
                     $or: [
-                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
                         { assignedFitter: fitterObjectId },
                     ],
                 }
@@ -304,7 +293,7 @@ export class FitterService {
             ...(fitterObjectId
                 ? {
                     $or: [
-                        { assignedTo: fitterObjectId },
+                        { assignedFitter: fitterObjectId },
                         { assignedFitter: fitterObjectId },
                     ],
                 }
@@ -336,19 +325,11 @@ export class FitterService {
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            $or: [
-                ...(fitterObjectId
-                    ? [
-                        { assignedTo: fitterObjectId },
-                        { assignedFitter: fitterObjectId },
-                    ]
-                    : []),
-            ],
+            ...(fitterObjectId ? { assignedFitter: fitterObjectId } : {}),
         })
-            .populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .exec();
 
         if (!job) {

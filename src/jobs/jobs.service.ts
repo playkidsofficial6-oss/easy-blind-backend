@@ -297,13 +297,19 @@ export class JobsService implements OnModuleInit {
         const anyJob = job.toObject() as Record<string, any>;
         const updates: Record<string, any> = {};
 
-        if (
-          anyJob.assignedTo &&
-          (typeof anyJob.assignedTo === 'string' ||
-            !(anyJob.assignedTo instanceof mongoose.Types.ObjectId))
+        if (anyJob.assignedBy && !anyJob.assignedSalesManager) {
+          const resolved = await this.resolveUserObjectId(anyJob.assignedBy);
+          if (resolved) updates.assignedSalesManager = resolved;
+          updates.$unset = { ...(updates.$unset || {}), assignedBy: 1 };
+        } else if (
+          anyJob.assignedSalesManager &&
+          (typeof anyJob.assignedSalesManager === 'string' ||
+            !(anyJob.assignedSalesManager instanceof mongoose.Types.ObjectId))
         ) {
-          const resolved = await this.resolveUserObjectId(anyJob.assignedTo);
-          if (resolved) updates.assignedTo = resolved;
+          const resolved = await this.resolveUserObjectId(
+            anyJob.assignedSalesManager,
+          );
+          if (resolved) updates.assignedSalesManager = resolved;
         }
 
         if (
@@ -318,15 +324,6 @@ export class JobsService implements OnModuleInit {
         }
 
         if (
-          anyJob.assignedBy &&
-          (typeof anyJob.assignedBy === 'string' ||
-            !(anyJob.assignedBy instanceof mongoose.Types.ObjectId))
-        ) {
-          const resolved = await this.resolveUserObjectId(anyJob.assignedBy);
-          if (resolved) updates.assignedBy = resolved;
-        }
-
-        if (
           anyJob.assignedFitter &&
           (typeof anyJob.assignedFitter === 'string' ||
             !(anyJob.assignedFitter instanceof mongoose.Types.ObjectId))
@@ -337,25 +334,16 @@ export class JobsService implements OnModuleInit {
           if (resolved) updates.assignedFitter = resolved;
         }
 
-        if (
-          (updates.assignedSalesman || anyJob.assignedSalesman) &&
-          !anyJob.assignedTo &&
-          !updates.assignedTo
-        ) {
-          updates.assignedTo =
-            updates.assignedSalesman || anyJob.assignedSalesman;
-        } else if (
-          (updates.assignedTo || anyJob.assignedTo) &&
-          !anyJob.assignedSalesman &&
-          !updates.assignedSalesman
-        ) {
-          updates.assignedSalesman = updates.assignedTo || anyJob.assignedTo;
+        if (anyJob.assignedTo !== undefined) {
+          if (!updates.assignedSalesman && !anyJob.assignedSalesman) {
+            const resolved = await this.resolveUserObjectId(anyJob.assignedTo);
+            if (resolved) updates.assignedSalesman = resolved;
+          }
+          updates.$unset = { ...(updates.$unset || {}), assignedTo: 1 };
         }
 
         if (Object.keys(updates).length > 0) {
-          await this.jobModel
-            .updateOne({ _id: job._id }, { $set: updates })
-            .exec();
+          await this.jobModel.updateOne({ _id: job._id }, updates).exec();
           updatedCount++;
         }
       } catch (err) {
@@ -373,21 +361,21 @@ export class JobsService implements OnModuleInit {
   }
 
   private async findUserByAssignment(
-    assignedTo?: string | mongoose.Types.ObjectId | any,
+    assignedTarget?: string | mongoose.Types.ObjectId | any,
   ): Promise<UserDocument | null> {
-    if (!assignedTo) return null;
-    let assignedToStr = '';
-    if (typeof assignedTo === 'object' && assignedTo._id) {
-      assignedToStr = assignedTo._id.toString();
+    if (!assignedTarget) return null;
+    let targetStr = '';
+    if (typeof assignedTarget === 'object' && assignedTarget._id) {
+      targetStr = assignedTarget._id.toString();
     } else {
-      assignedToStr = assignedTo.toString();
+      targetStr = assignedTarget.toString();
     }
     return this.userModel
       .findOne({
         $or: [
-          ...(isValidObjectId(assignedToStr) ? [{ _id: assignedToStr }] : []),
-          { name: assignedToStr },
-          { email: assignedToStr },
+          ...(isValidObjectId(targetStr) ? [{ _id: targetStr }] : []),
+          { name: targetStr },
+          { email: targetStr },
         ],
       })
       .exec();
@@ -398,9 +386,9 @@ export class JobsService implements OnModuleInit {
     oldSalesmanUserId?: string,
   ) {
     try {
-      const assignedTo = job.assignedSalesman || job.assignedTo;
-      if (assignedTo) {
-        const user = await this.findUserByAssignment(assignedTo);
+      const assignedSalesman = job.assignedSalesman;
+      if (assignedSalesman) {
+        const user = await this.findUserByAssignment(assignedSalesman);
         if (user) {
           this.liveLocationGateway.server
             .to(`user:${String(user._id)}`)
@@ -412,16 +400,15 @@ export class JobsService implements OnModuleInit {
       }
 
       if (oldSalesmanUserId) {
-        const currentSalesmanUser = assignedTo
-          ? await this.findUserByAssignment(assignedTo)
+        const currentSalesmanUser = assignedSalesman
+          ? await this.findUserByAssignment(assignedSalesman)
           : null;
         if (
           !currentSalesmanUser ||
           currentSalesmanUser._id.toString() !== oldSalesmanUserId
         ) {
           const unassignedJobCopy: Record<string, any> = job.toJSON();
-          unassignedJobCopy.assignedTo = '';
-          unassignedJobCopy.assignedSalesman = '';
+          unassignedJobCopy.assignedSalesman = null;
           this.liveLocationGateway.server
             .to(`user:${oldSalesmanUserId}`)
             .emit('job:assigned', unassignedJobCopy);
@@ -444,26 +431,27 @@ export class JobsService implements OnModuleInit {
       (await geocodeAddress(createJobDto.address));
     const jobId = await this.generateNextJobId();
 
-    const assignedTo = await this.resolveUserObjectId(createJobDto.assignedTo);
-    const assignedSalesman =
-      (await this.resolveUserObjectId(createJobDto.assignedSalesman)) ||
-      assignedTo;
-    const assignedBy = await this.resolveUserObjectId(createJobDto.assignedBy);
+    const assignedSalesManager = await this.resolveUserObjectId(
+      createJobDto.assignedSalesManager,
+    );
+    const assignedSalesman = await this.resolveUserObjectId(
+      createJobDto.assignedSalesman,
+    );
     const assignedFitter = await this.resolveUserObjectId(
       createJobDto.assignedFitter,
     );
-    const finalAssignedTo = assignedTo || assignedSalesman;
 
     const rawJobData = { ...createJobDto } as Record<string, any>;
-    delete rawJobData.assignedTo;
+    delete rawJobData.assignedSalesManager;
     delete rawJobData.assignedSalesman;
-    delete rawJobData.assignedBy;
     delete rawJobData.assignedFitter;
 
     const createdJob = new this.jobModel({
       ...rawJobData,
       jobId,
-      ...(assignedBy ? { assignedBy } : {}),
+      ...(assignedSalesManager ? { assignedSalesManager } : {}),
+      ...(assignedSalesman ? { assignedSalesman } : {}),
+      ...(assignedFitter ? { assignedFitter } : {}),
       location: {
         type: 'Point',
         coordinates,
@@ -474,16 +462,11 @@ export class JobsService implements OnModuleInit {
     });
 
     if (assignedFitter) {
-      createdJob.assignedFitter = assignedFitter;
-      createdJob.assignedTo = assignedFitter;
-      createdJob.assignedSalesman = undefined;
       createdJob.status = JobStatus.FitterAssigned;
     } else if (assignedSalesman) {
-      createdJob.assignedSalesman = assignedSalesman;
-      createdJob.assignedTo = assignedSalesman;
-      createdJob.assignedFitter = undefined;
       createdJob.status = JobStatus.SalesmanScheduled;
     }
+
     const savedJob = await createdJob.save();
     this.notifySalesmanJobAssignment(savedJob).catch((err) => {
       console.error(
@@ -503,10 +486,15 @@ export class JobsService implements OnModuleInit {
     const [items, total] = await Promise.all([
       this.jobModel
         .find(filter)
-        .populate('assignedTo', 'name email role phone liveStatus')
-        .populate('assignedSalesman', 'name email role phone liveStatus')
-        .populate('assignedBy', 'name email role phone liveStatus')
-        .populate('assignedFitter', 'name email role phone liveStatus')
+        .populate(
+          'assignedSalesManager',
+          'name email role phone status liveStatus',
+        )
+        .populate(
+          'assignedSalesman',
+          'name email role phone status liveStatus',
+        )
+        .populate('assignedFitter', 'name email role phone status liveStatus')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -536,13 +524,12 @@ export class JobsService implements OnModuleInit {
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobDocument> {
     const currentJob = await this.findByMongoIdOrJobId(id);
     let oldSalesmanUserId: string | undefined;
-    if (currentJob) {
-      const assignedTo = currentJob.assignedSalesman || currentJob.assignedTo;
-      if (assignedTo) {
-        const oldUser = await this.findUserByAssignment(assignedTo);
-        if (oldUser) {
-          oldSalesmanUserId = oldUser._id.toString();
-        }
+    if (currentJob && currentJob.assignedSalesman) {
+      const oldUser = await this.findUserByAssignment(
+        currentJob.assignedSalesman,
+      );
+      if (oldUser) {
+        oldSalesmanUserId = oldUser._id.toString();
       }
     }
 
@@ -550,42 +537,33 @@ export class JobsService implements OnModuleInit {
       jobId?: string;
     };
     delete safeUpdateDto.jobId;
-    delete (safeUpdateDto as any).assignedTo;
+    delete (safeUpdateDto as any).assignedSalesManager;
     delete (safeUpdateDto as any).assignedSalesman;
-    delete (safeUpdateDto as any).assignedBy;
     delete (safeUpdateDto as any).assignedFitter;
 
     const resolvedUserFields: Record<string, any> = {};
-    if (updateJobDto.assignedTo !== undefined) {
-      const resolved = await this.resolveUserObjectId(updateJobDto.assignedTo);
-      if (resolved) resolvedUserFields.assignedTo = resolved;
+    if (updateJobDto.assignedSalesManager !== undefined) {
+      const resolved = await this.resolveUserObjectId(
+        updateJobDto.assignedSalesManager,
+      );
+      resolvedUserFields.assignedSalesManager = resolved || null;
     }
     if (updateJobDto.assignedSalesman !== undefined) {
       const resolved = await this.resolveUserObjectId(
         updateJobDto.assignedSalesman,
       );
-      if (resolved) resolvedUserFields.assignedSalesman = resolved;
-    }
-    if (updateJobDto.assignedBy !== undefined) {
-      const resolved = await this.resolveUserObjectId(updateJobDto.assignedBy);
-      if (resolved) resolvedUserFields.assignedBy = resolved;
+      resolvedUserFields.assignedSalesman = resolved || null;
     }
     if (updateJobDto.assignedFitter !== undefined) {
       const resolved = await this.resolveUserObjectId(
         updateJobDto.assignedFitter,
       );
-      if (resolved) resolvedUserFields.assignedFitter = resolved;
+      resolvedUserFields.assignedFitter = resolved || null;
     }
 
     if (resolvedUserFields.assignedFitter) {
-      resolvedUserFields.assignedTo = resolvedUserFields.assignedFitter;
-      resolvedUserFields.assignedSalesman = null;
-      resolvedUserFields.activeSalesmanId = null;
-      resolvedUserFields.activeSalesmanName = null;
       resolvedUserFields.status = JobStatus.FitterAssigned;
     } else if (resolvedUserFields.assignedSalesman) {
-      resolvedUserFields.assignedTo = resolvedUserFields.assignedSalesman;
-      resolvedUserFields.assignedFitter = null;
       resolvedUserFields.status = JobStatus.SalesmanScheduled;
     }
 
@@ -697,22 +675,18 @@ export class JobsService implements OnModuleInit {
       throw new NotFoundException(`Fitter with id ${dto.fitterId} was not found`);
     }
 
-    await this.jobModel.findOneAndUpdate(
-      this.getIdentifierFilter(id),
-      {
-        $set: {
-          assignedFitter: fitterUser._id,
-          assignedTo: fitterUser._id,
-          status: JobStatus.FitterAssigned,
+    await this.jobModel
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        {
+          $set: {
+            assignedFitter: fitterUser._id,
+            status: JobStatus.FitterAssigned,
+          },
         },
-        $unset: {
-          assignedSalesman: 1,
-          activeSalesmanId: 1,
-          activeSalesmanName: 1,
-        },
-      },
-      { runValidators: true },
-    ).exec();
+        { runValidators: true },
+      )
+      .exec();
 
     return (await this.findByMongoIdOrJobId(id)) as JobDocument;
   }
@@ -734,11 +708,13 @@ export class JobsService implements OnModuleInit {
       updateObj.notes = job.notes ? `${job.notes}\n${dto.notes}` : dto.notes;
     }
 
-    await this.jobModel.findOneAndUpdate(
-      this.getIdentifierFilter(id),
-      { $set: updateObj },
-      { runValidators: true },
-    ).exec();
+    await this.jobModel
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        { $set: updateObj },
+        { runValidators: true },
+      )
+      .exec();
 
     return (await this.findByMongoIdOrJobId(id)) as JobDocument;
   }
@@ -760,11 +736,13 @@ export class JobsService implements OnModuleInit {
       updateObj.notes = job.notes ? `${job.notes}\n${dto.notes}` : dto.notes;
     }
 
-    await this.jobModel.findOneAndUpdate(
-      this.getIdentifierFilter(id),
-      { $set: updateObj },
-      { runValidators: true },
-    ).exec();
+    await this.jobModel
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        { $set: updateObj },
+        { runValidators: true },
+      )
+      .exec();
 
     return (await this.findByMongoIdOrJobId(id)) as JobDocument;
   }
@@ -791,11 +769,13 @@ export class JobsService implements OnModuleInit {
       updateObj.fittingNotes = dto.notes;
     }
 
-    await this.jobModel.findOneAndUpdate(
-      this.getIdentifierFilter(id),
-      { $set: updateObj },
-      { runValidators: true },
-    ).exec();
+    await this.jobModel
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        { $set: updateObj },
+        { runValidators: true },
+      )
+      .exec();
 
     return (await this.findByMongoIdOrJobId(id)) as JobDocument;
   }
@@ -814,15 +794,7 @@ export class JobsService implements OnModuleInit {
     }
 
     const salesmanId = (
-      workflowDto.salesmanId ||
-      currentJob.activeSalesmanId ||
-      currentJob.assignedSalesman ||
-      currentJob.assignedTo
-    )?.toString();
-    const salesmanName = (
-      workflowDto.salesmanName ||
-      currentJob.activeSalesmanName ||
-      currentJob.assignedTo
+      workflowDto.salesmanId || currentJob.assignedSalesman
     )?.toString();
 
     const updatedJob = await this.jobModel
@@ -830,9 +802,6 @@ export class JobsService implements OnModuleInit {
         this.getIdentifierFilter(id),
         {
           status: state.jobStatus,
-
-          activeSalesmanId: salesmanId,
-          activeSalesmanName: salesmanName,
           ...(salesmanId ? { assignedSalesman: salesmanId } : {}),
           ...(workflowDto.notes !== undefined
             ? { notes: workflowDto.notes }
@@ -849,35 +818,19 @@ export class JobsService implements OnModuleInit {
 
     if (salesmanId) {
       await this.userModel
-        .findByIdAndUpdate(
-          salesmanId,
-
-          { runValidators: true },
-        )
+        .findByIdAndUpdate(salesmanId, { runValidators: true })
         .exec();
 
-      await this.liveLocationService.updateLiveStatus(
-        salesmanId,
-      );
-
-      console.log(
-        `🚗 Emitting salesman:status-changed`,
-        `userId: ${salesmanId}`,
-
-      );
+      await this.liveLocationService.updateLiveStatus(salesmanId);
 
       try {
         this.liveLocationGateway.server
           .to('live-location:managers')
           .emit('salesman:status-changed', {
             userId: salesmanId,
-
             role: 'Salesman',
             jobId: id,
           });
-        console.log(
-          `[Socket] Emitted salesman:status-changed to managers for ${salesmanId} -> s}`,
-        );
       } catch (err) {
         console.error('[Socket] Failed to emit salesman:status-changed:', err);
       }
@@ -904,10 +857,15 @@ export class JobsService implements OnModuleInit {
   private async findByMongoIdOrJobId(id: string): Promise<JobDocument | null> {
     return this.jobModel
       .findOne(this.getIdentifierFilter(id))
-      .populate('assignedTo', 'name email role phone liveStatus')
-      .populate('assignedSalesman', 'name email role phone liveStatus')
-      .populate('assignedBy', 'name email role phone liveStatus')
-      .populate('assignedFitter', 'name email role phone liveStatus')
+      .populate(
+        'assignedSalesManager',
+        'name email role phone status liveStatus',
+      )
+      .populate(
+        'assignedSalesman',
+        'name email role phone status liveStatus',
+      )
+      .populate('assignedFitter', 'name email role phone status liveStatus')
       .exec();
   }
 

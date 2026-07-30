@@ -125,11 +125,6 @@ export class CreateMeasurementDto {
   @IsString()
   jobId: string;
 
-  @ApiProperty({ example: 'salesman_id_123' })
-  @IsOptional()
-  @IsString()
-  assignedStaff?: string;
-
   @ApiProperty({ example: '2026-05-20T10:00:00.000Z' })
   @IsOptional()
   @IsDateString()

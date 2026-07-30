@@ -26,7 +26,6 @@ export class MeasurementsService {
     } = this.calculateSummaryAndArea(rooms);
 
     return {
-      assignedStaff: dto.assignedStaff,
       visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
       status: dto.status || 'Completed',
       rooms: processedRooms as any,

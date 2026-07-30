@@ -112,9 +112,6 @@ export const RoomSchema = SchemaFactory.createForClass(Room);
 @Schema({ _id: false })
 export class JobMeasurements {
   @Prop({ required: false })
-  assignedStaff?: string;
-
-  @Prop({ required: false })
   visitDate?: Date;
 
   @Prop({ required: false, default: 'Completed' })
@@ -164,12 +161,6 @@ export class Quotation {
 
   @Prop({ required: false })
   client: string;
-
-  @Prop()
-  salesmanId?: string;
-
-  @Prop()
-  salesmanName?: string;
 
   @Prop()
   clientPhone?: string;
@@ -236,7 +227,7 @@ export class Job {
   customerPhone: string;
 
   @Prop({ required: false, trim: true })
-  customerNote?: string
+  customerNote?: string;
 
   @Prop({ required: true, trim: true, maxlength: 250 })
   address: string;
@@ -273,14 +264,7 @@ export class Job {
     type: MongooseSchema.Types.ObjectId,
     ref: 'User',
   })
-  assignedTo?: Types.ObjectId;
-
-  @Prop({
-    required: false,
-    type: MongooseSchema.Types.ObjectId,
-    ref: 'User',
-  })
-  assignedBy?: Types.ObjectId;
+  assignedSalesManager?: Types.ObjectId;
 
   @Prop({
     required: false,
@@ -288,12 +272,6 @@ export class Job {
     ref: 'User',
   })
   assignedSalesman?: Types.ObjectId;
-
-  @Prop({ required: false, trim: true })
-  activeSalesmanId?: string;
-
-  @Prop({ required: false, trim: true })
-  activeSalesmanName?: string;
 
   @Prop()
   travelStartedAt?: Date;
@@ -343,9 +321,6 @@ export class Job {
 
   @Prop({ type: JobMeasurementsSchema, required: false })
   measurements?: JobMeasurements;
-
-  @Prop({ trim: true, maxlength: 1000 })
-  cancellationReason?: string;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
@@ -360,6 +335,8 @@ JobSchema.set('toObject', { virtuals: true });
 JobSchema.index({ jobId: 1 }, { unique: true, sparse: true });
 JobSchema.index({ customerEmail: 1 });
 JobSchema.index({ status: 1, scheduledAt: 1 });
+JobSchema.index({ assignedSalesManager: 1 });
 JobSchema.index({ assignedSalesman: 1 });
+JobSchema.index({ assignedFitter: 1 });
 JobSchema.index({ createdAt: -1 });
 JobSchema.index({ location: '2dsphere' });

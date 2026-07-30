@@ -26,8 +26,18 @@ import {
 
 interface ClientToServerEvents {
   'location:update': (payload: UpdateLiveLocationDto) => void;
-  'job:updated': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
-  'job:deleted': (payload: { assignedTo?: string; [key: string]: unknown }) => void;
+  'job:updated': (payload: {
+    assignedSalesManager?: string;
+    assignedSalesman?: string;
+    assignedFitter?: string;
+    [key: string]: unknown;
+  }) => void;
+  'job:deleted': (payload: {
+    assignedSalesManager?: string;
+    assignedSalesman?: string;
+    assignedFitter?: string;
+    [key: string]: unknown;
+  }) => void;
 }
 
 interface ServerToClientEvents {
@@ -211,22 +221,44 @@ export class LiveLocationGateway
   @SubscribeMessage('job:updated')
   handleJobUpdated(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
+    @MessageBody()
+    payload: {
+      assignedSalesManager?: string;
+      assignedSalesman?: string;
+      assignedFitter?: string;
+      [key: string]: unknown;
+    },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:updated', payload);
-    if (payload.assignedTo) {
-      this.server.to(`user:${payload.assignedTo}`).emit('job:updated', payload);
+    const targetUsers = [
+      payload.assignedSalesManager,
+      payload.assignedSalesman,
+      payload.assignedFitter,
+    ].filter(Boolean);
+    for (const userId of targetUsers) {
+      this.server.to(`user:${userId}`).emit('job:updated', payload);
     }
   }
 
   @SubscribeMessage('job:deleted')
   handleJobDeleted(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { assignedTo?: string; [key: string]: unknown },
+    @MessageBody()
+    payload: {
+      assignedSalesManager?: string;
+      assignedSalesman?: string;
+      assignedFitter?: string;
+      [key: string]: unknown;
+    },
   ) {
     this.server.to(MANAGER_ROOM).emit('job:deleted', payload);
-    if (payload.assignedTo) {
-      this.server.to(`user:${payload.assignedTo}`).emit('job:deleted', payload);
+    const targetUsers = [
+      payload.assignedSalesManager,
+      payload.assignedSalesman,
+      payload.assignedFitter,
+    ].filter(Boolean);
+    for (const userId of targetUsers) {
+      this.server.to(`user:${userId}`).emit('job:deleted', payload);
     }
   }
 

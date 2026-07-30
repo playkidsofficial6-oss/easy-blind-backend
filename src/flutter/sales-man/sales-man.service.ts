@@ -13,32 +13,12 @@ export class SalesManService {
     ) { }
 
     async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedSalesman);
-        const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
-        const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
-
-        const salesmanQuery = {
-            $or: [
-                ...(salesmanObjectId
-                    ? [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedTo: salesmanObjectId },
-                    ]
-                    : []),
-                ...(salesmanIdStr
-                    ? [
-                        { activeSalesmanId: salesmanIdStr },
-                    ]
-                    : []),
-            ],
-        };
 
         const jobs = await this.jobModel
-            .find(salesmanQuery)
-            .populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            .find({ assignedSalesman, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -52,60 +32,24 @@ export class SalesManService {
         const todayJobs: JobDocument[] = [];
         let tommorow = 0;
         let upcoming = 0;
-        let pending = 0;
-        let scheduled = 0;
         let completed = 0;
         let cancelled = 0;
-        let delayed = 0;
 
-        for (const job of jobs) {
-            if (job.status === JobStatus.Pending) {
-                pending++;
-            }
-            if (job.status === JobStatus.SalesmanScheduled) {
-                scheduled++;
-            }
-            if (job.status === JobStatus.Completed || job.status === JobStatus.ReadyForFitting) {
-                completed++;
-                continue;
-            }
-            if (job.status === JobStatus.Cancelled || job.status === JobStatus.SalesmanCancelled) {
-                cancelled++;
-                continue;
-            }
+        tommorow = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
+        upcoming = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
+        completed = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] } }).exec();
+        cancelled = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: { $in: [JobStatus.SalesmanCancelled] } }).exec();
 
-            const scheduledDate = job.scheduledAt ? new Date(job.scheduledAt) : null;
 
-            const isJobToday =
-                (scheduledDate && scheduledDate >= startOfToday && scheduledDate <= endOfToday) ||
-                job.status === JobStatus.SalesmanOnTheWay ||
-                job.status === JobStatus.Measuring;
 
-            if (isJobToday) {
-                todayJobs.push(job);
-            } else if (scheduledDate) {
-                if (scheduledDate >= startOfTomorrow && scheduledDate <= endOfTomorrow) {
-                    tommorow++;
-                } else if (scheduledDate > endOfTomorrow) {
-                    upcoming++;
-                } else if (scheduledDate < startOfToday) {
-                    delayed++;
-                }
-            } else {
-                upcoming++;
-            }
-        }
 
         return {
             message: "All home page datas are fetched successfully",
             data: {
                 tommorow,
                 upcoming,
-                pending,
-                scheduled,
                 completed,
                 cancelled,
-                delayed,
                 todayJobs
             }
         };
@@ -114,23 +58,8 @@ export class SalesManService {
     async myJobs(assignedSalesman: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
         const isHexId = Types.ObjectId.isValid(assignedSalesman);
         const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
-        const salesmanIdStr = assignedSalesman ? assignedSalesman.toString() : null;
 
-        const baseSalesmanFilter = {
-            $or: [
-                ...(salesmanObjectId
-                    ? [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedTo: salesmanObjectId },
-                    ]
-                    : []),
-                ...(salesmanIdStr
-                    ? [
-                        { activeSalesmanId: salesmanIdStr },
-                    ]
-                    : []),
-            ],
-        };
+        const baseSalesmanFilter = salesmanObjectId ? { assignedSalesman: salesmanObjectId } : {};
 
         const mongoQuery: any = { ...baseSalesmanFilter };
 
@@ -171,10 +100,9 @@ export class SalesManService {
 
         const jobs = await this.jobModel
             .find(mongoQuery)
-            .populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            .populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -259,7 +187,7 @@ export class SalesManService {
             ...(salesmanObjectId
                 ? {
                     $or: [
-                        { assignedTo: salesmanObjectId },
+                        { assignedSalesman: salesmanObjectId },
                         { assignedSalesman: salesmanObjectId },
                     ],
                 }
@@ -290,7 +218,7 @@ export class SalesManService {
             ...(salesmanObjectId
                 ? {
                     $or: [
-                        { assignedTo: salesmanObjectId },
+                        { assignedSalesman: salesmanObjectId },
                         { assignedSalesman: salesmanObjectId },
                     ],
                 }
@@ -319,14 +247,10 @@ export class SalesManService {
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            $or: [
-                { assignedTo: salesmanId },
-                { assignedSalesman: salesmanId },
-            ]
-        }).populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+            assignedSalesman: salesmanId,
+        }).populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .exec();
 
         if (!job) {
@@ -346,12 +270,11 @@ export class SalesManService {
         }
         const userObjectId = new Types.ObjectId(user);
         const jobs = await this.jobModel.find({
-            assignedTo: userObjectId,
+            assignedSalesman: userObjectId,
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
-        }).populate('assignedTo', 'name email role phone liveStatus')
-            .populate('assignedSalesman', 'name email role phone liveStatus')
-            .populate('assignedBy', 'name email role phone liveStatus')
-            .populate('assignedFitter', 'name email role phone liveStatus')
+        }).populate('assignedSalesManager', 'name email role phone status liveStatus')
+            .populate('assignedSalesman', 'name email role phone status liveStatus')
+            .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
         return {
@@ -367,11 +290,8 @@ interface HomeResponseType {
     data: {
         tommorow: number,
         upcoming: number,
-        pending: number,
-        scheduled: number,
         completed: number,
         cancelled: number,
-        delayed: number,
         todayJobs: JobDocument[]
     }
 }
