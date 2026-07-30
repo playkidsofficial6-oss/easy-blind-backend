@@ -12,6 +12,16 @@ export class FitterService {
     ) { }
 
     async home(assignedFitter: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
+        const isHexId = Types.ObjectId.isValid(assignedFitter);
+        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
+        const fitterStr = assignedFitter ? assignedFitter.toString() : '';
+
+        const fitterFilter = {
+            $or: [
+                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
+                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
+            ],
+        };
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -21,7 +31,7 @@ export class FitterService {
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
         const jobs = await this.jobModel
-            .find({ assignedFitter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.Fitting, JobStatus.TakingPhotos] } })
+            .find({ ...fitterFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.Fitting, JobStatus.TakingPhotos] } })
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
             .populate('assignedFitter', 'name email role phone status liveStatus')
@@ -34,10 +44,10 @@ export class FitterService {
         let completed = 0;
         let cancelled = 0;
 
-        tommorow = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
-        upcoming = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
-        completed = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: { $in: [JobStatus.Completed] } }).exec();
-        cancelled = await this.jobModel.countDocuments({ assignedFitter: assignedFitter, status: { $in: [JobStatus.FitterCancelled, JobStatus.Cancelled] } }).exec();
+        tommorow = await this.jobModel.countDocuments({ ...fitterFilter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
+        upcoming = await this.jobModel.countDocuments({ ...fitterFilter, status: JobStatus.FitterAssigned, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
+        completed = await this.jobModel.countDocuments({ ...fitterFilter, status: { $in: [JobStatus.Completed] } }).exec();
+        cancelled = await this.jobModel.countDocuments({ ...fitterFilter, status: { $in: [JobStatus.FitterCancelled, JobStatus.Cancelled] } }).exec();
 
         return {
             message: "All home page datas are fetched successfully",
@@ -52,12 +62,8 @@ export class FitterService {
     }
 
     async myJobs(assignedFitter: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedFitter);
-        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
 
-        const baseFitterFilter = fitterObjectId ? { assignedFitter: fitterObjectId } : {};
-
-        const mongoQuery: any = { ...baseFitterFilter };
+        const mongoQuery: any = { assignedFitter };
 
         if (query?.status) {
             mongoQuery.status = query.status;
@@ -143,18 +149,11 @@ export class FitterService {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
-        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
+
 
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(fitterObjectId
-                ? {
-                    $or: [
-                        { assignedFitter: fitterObjectId },
-                        { assignedFitter: fitterObjectId },
-                    ],
-                }
-                : {}),
+            assignedFitter: fitterId,
         });
 
         if (!job) {
@@ -175,17 +174,14 @@ export class FitterService {
             throw new BadRequestException("Invalid job ID");
         }
         const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
+        const fitterStr = fitterId ? fitterId.toString() : '';
 
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(fitterObjectId
-                ? {
-                    $or: [
-                        { assignedFitter: fitterObjectId },
-                        { assignedFitter: fitterObjectId },
-                    ],
-                }
-                : {}),
+            $or: [
+                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
+                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
+            ],
         });
 
         if (!job) {
@@ -208,12 +204,15 @@ export class FitterService {
             throw new BadRequestException("Invalid job ID");
         }
         const jobObjectId = new Types.ObjectId(jobId);
-        const isFitterHexId = Types.ObjectId.isValid(fitterId);
-        const fitterObjectId = isFitterHexId ? new Types.ObjectId(fitterId) : null;
+        const fitterObjectId = Types.ObjectId.isValid(fitterId) ? new Types.ObjectId(fitterId) : null;
+        const fitterStr = fitterId ? fitterId.toString() : '';
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            ...(fitterObjectId ? { assignedFitter: fitterObjectId } : {}),
+            $or: [
+                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
+                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
+            ],
         })
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
@@ -232,12 +231,14 @@ export class FitterService {
 
     async completedJobs(user: mongoose.Types.ObjectId | string) {
         const isHexId = Types.ObjectId.isValid(user);
-        if (!isHexId) {
-            throw new BadRequestException("Invalid user ID");
-        }
-        const userObjectId = new Types.ObjectId(user);
+        const userObjectId = isHexId ? new Types.ObjectId(user) : null;
+        const userStr = user ? user.toString() : '';
+
         const jobs = await this.jobModel.find({
-            assignedFitter: userObjectId,
+            $or: [
+                ...(userObjectId ? [{ assignedFitter: userObjectId }] : []),
+                ...(userStr ? [{ assignedFitter: userStr }] : []),
+            ],
             status: { $in: [JobStatus.Completed] },
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')

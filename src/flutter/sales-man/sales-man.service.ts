@@ -13,6 +13,9 @@ export class SalesManService {
     ) { }
 
     async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
+        const salesmanFilter = {
+            assignedSalesman: assignedSalesman
+        };
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -21,15 +24,13 @@ export class SalesManService {
         const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
         const endOfTomorrow = new Date(endOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-
         const jobs = await this.jobModel
-            .find({ assignedSalesman, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
+            .find({ ...salesmanFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
             .populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
             .populate('assignedFitter', 'name email role phone status liveStatus')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
-
 
         const todayJobs: JobDocument[] = jobs;
         let tommorow = 0;
@@ -37,13 +38,10 @@ export class SalesManService {
         let completed = 0;
         let cancelled = 0;
 
-        tommorow = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
-        upcoming = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
-        completed = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] } }).exec();
-        cancelled = await this.jobModel.countDocuments({ assignedSalesman: assignedSalesman, status: { $in: [JobStatus.SalesmanCancelled] } }).exec();
-
-
-
+        tommorow = await this.jobModel.countDocuments({ ...salesmanFilter, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfTomorrow, $lte: endOfTomorrow } }).exec();
+        upcoming = await this.jobModel.countDocuments({ ...salesmanFilter, status: JobStatus.SalesmanScheduled, scheduledAt: { $gte: startOfToday, $lte: endOfToday } }).exec();
+        completed = await this.jobModel.countDocuments({ ...salesmanFilter, status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] } }).exec();
+        cancelled = await this.jobModel.countDocuments({ ...salesmanFilter, status: { $in: [JobStatus.SalesmanCancelled] } }).exec();
 
         return {
             message: "All home page datas are fetched successfully",
@@ -58,12 +56,8 @@ export class SalesManService {
     }
 
     async myJobs(assignedSalesman: mongoose.Types.ObjectId | string, query: MyJobsFilterDto): Promise<MyJobResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedSalesman);
-        const salesmanObjectId = isHexId ? new Types.ObjectId(assignedSalesman) : null;
 
-        const baseSalesmanFilter = salesmanObjectId ? { assignedSalesman: salesmanObjectId } : {};
-
-        const mongoQuery: any = { ...baseSalesmanFilter };
+        const mongoQuery: any = { assignedSalesman: assignedSalesman };
 
         if (query?.status) {
             mongoQuery.status = query.status;
@@ -71,7 +65,6 @@ export class SalesManService {
         if (query?.priority) {
             mongoQuery.priority = query.priority;
         }
-
 
         if (query?.propertyType) {
             mongoQuery.propertyType = query.propertyType;
@@ -140,13 +133,6 @@ export class SalesManService {
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
-
-
-
-
-
-
-
         return {
             message: "My job page datas are fetched successfully",
             data: jobs,
@@ -158,16 +144,14 @@ export class SalesManService {
             throw new BadRequestException("Invalid job ID");
         }
         const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
+        const salesmanStr = salesmanId ? salesmanId.toString() : '';
+
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(salesmanObjectId
-                ? {
-                    $or: [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedSalesman: salesmanObjectId },
-                    ],
-                }
-                : {}),
+            $or: [
+                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
+                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
+            ],
         });
 
         if (!job) {
@@ -183,22 +167,19 @@ export class SalesManService {
         };
     }
 
-
     async cancelJob(salesmanId: mongoose.Types.ObjectId | string, jobId: string, dto: { reason: string }) {
         if (!Types.ObjectId.isValid(jobId)) {
             throw new BadRequestException("Invalid job ID");
         }
         const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
+        const salesmanStr = salesmanId ? salesmanId.toString() : '';
+
         const job = await this.jobModel.findOne({
             _id: new Types.ObjectId(jobId),
-            ...(salesmanObjectId
-                ? {
-                    $or: [
-                        { assignedSalesman: salesmanObjectId },
-                        { assignedSalesman: salesmanObjectId },
-                    ],
-                }
-                : {}),
+            $or: [
+                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
+                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
+            ],
         });
 
         if (!job) {
@@ -214,16 +195,21 @@ export class SalesManService {
         };
     }
 
-    async getJobById(salesmanId: mongoose.Types.ObjectId, jobId: string) {
+    async getJobById(salesmanId: mongoose.Types.ObjectId | string, jobId: string) {
         const isHexId = Types.ObjectId.isValid(jobId);
         if (!isHexId) {
             throw new BadRequestException("Invalid job ID");
         }
         const jobObjectId = new Types.ObjectId(jobId);
+        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
+        const salesmanStr = salesmanId ? salesmanId.toString() : '';
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
-            assignedSalesman: salesmanId,
+            $or: [
+                ...(salesmanObjectId ? [{ assignedSalesman: salesmanObjectId }] : []),
+                ...(salesmanStr ? [{ assignedSalesman: salesmanStr }] : []),
+            ],
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
             .populate('assignedFitter', 'name email role phone status liveStatus')
@@ -239,14 +225,16 @@ export class SalesManService {
         };
     }
 
-    async completedJobs(user: mongoose.Types.ObjectId) {
+    async completedJobs(user: mongoose.Types.ObjectId | string) {
         const isHexId = Types.ObjectId.isValid(user);
-        if (!isHexId) {
-            throw new BadRequestException("Invalid user ID");
-        }
-        const userObjectId = new Types.ObjectId(user);
+        const userObjectId = isHexId ? new Types.ObjectId(user) : null;
+        const userStr = user ? user.toString() : '';
+
         const jobs = await this.jobModel.find({
-            assignedSalesman: userObjectId,
+            $or: [
+                ...(userObjectId ? [{ assignedSalesman: userObjectId }] : []),
+                ...(userStr ? [{ assignedSalesman: userStr }] : []),
+            ],
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
         }).populate('assignedSalesManager', 'name email role phone status liveStatus')
             .populate('assignedSalesman', 'name email role phone status liveStatus')
