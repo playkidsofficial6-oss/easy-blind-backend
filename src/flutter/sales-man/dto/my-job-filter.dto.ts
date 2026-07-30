@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEnum, IsIn, IsOptional } from "class-validator";
-import { JobPriority, JobStatus } from "../../../jobs/schemas/job.schema";
+import { JobPriority, JobStatus, PropertyType } from "../../../jobs/schemas/job.schema";
 
 export class MyJobsFilterDto {
     @ApiPropertyOptional({ example: "abc", description: "Search query" })
@@ -24,8 +24,8 @@ export class MyJobsFilterDto {
     priority?: JobPriority;
 
     @ApiPropertyOptional({ example: "Villa", description: "Property type filter" })
-    @IsEnum(['Villa', 'Apartment', 'Townhouse', 'Office', 'Other'])
+    @IsEnum(PropertyType)
     @IsOptional()
-    propertyType?: "Villa" | "Apartment" | "Townhouse" | "Office" | "Other";
+    propertyType?: PropertyType;
 }
 

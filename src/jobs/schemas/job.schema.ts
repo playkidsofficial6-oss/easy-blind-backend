@@ -29,6 +29,14 @@ export enum JobPriority {
   High = 'High',
 }
 
+export enum PropertyType {
+  'Villa' = 'Villa',
+  'Apartment' = 'Apartment',
+  'Townhouse' = 'Townhouse',
+  'Office' = 'Office',
+  'Other' = 'Other',
+}
+
 
 
 
@@ -238,8 +246,8 @@ export class Job {
   @Prop({ required: false, trim: true, maxlength: 80 })
   productType?: string;
 
-  @Prop({ required: false, trim: true, maxlength: 80 })
-  propertyType?: string;
+  @Prop({ required: false, trim: true, maxlength: 80, enum: PropertyType })
+  propertyType?: PropertyType;
 
   @Prop({ required: false, min: 1 })
   quantity?: number;
