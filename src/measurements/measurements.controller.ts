@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MeasurementsService } from './measurements.service';
@@ -10,7 +18,7 @@ import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('measurements')
 export class MeasurementsController {
-  constructor(private readonly measurementsService: MeasurementsService) { }
+  constructor(private readonly measurementsService: MeasurementsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new measurement record' })
@@ -32,5 +40,4 @@ export class MeasurementsController {
   async getByJob(@Param('jobId') jobId: string) {
     return this.measurementsService.getMeasurementByJobId(jobId);
   }
-
 }

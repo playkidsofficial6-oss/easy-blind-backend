@@ -43,7 +43,7 @@ export class LiveLocationService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
-  ) { }
+  ) {}
 
   async updateLocation(
     authUser: JwtAuthenticatedUser,
@@ -124,8 +124,6 @@ export class LiveLocationService {
       users.map((user) => this.toResponse(user)),
     );
   }
-
-
 
   private assertCanAccessAll(authUser: JwtAuthenticatedUser): void {
     if (

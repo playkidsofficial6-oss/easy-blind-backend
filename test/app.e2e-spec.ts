@@ -261,7 +261,9 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
     const res = await request(httpServer).get('/api/swagger/').expect(200);
     expect(res.text).toContain('swagger-ui');
 
-    const jsonRes = await request(httpServer).get('/api/swagger-json').expect(200);
+    const jsonRes = await request(httpServer)
+      .get('/api/swagger-json')
+      .expect(200);
     expect(jsonRes.body.openapi).toBeDefined();
     expect(jsonRes.body.info.title).toBe('Easy Blind Backend API');
   });

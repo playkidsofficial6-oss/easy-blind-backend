@@ -28,7 +28,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
@@ -59,8 +59,12 @@ export class UsersController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset link for forgotten password' })
-  @ApiOkResponse({ description: 'Password reset request processed successfully.' })
+  @ApiOperation({
+    summary: 'Request a password reset link for forgotten password',
+  })
+  @ApiOkResponse({
+    description: 'Password reset request processed successfully.',
+  })
   forgetPassword(@Body() dto: PasswordResetRequestDto) {
     return this.usersService.forgetPassword(dto);
   }
@@ -122,6 +126,4 @@ export class UsersController {
   ) {
     return this.usersService.checkOut(user.userId, body?.userId);
   }
-
-
 }

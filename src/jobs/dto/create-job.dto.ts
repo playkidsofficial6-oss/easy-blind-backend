@@ -11,10 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import {
-  JobPriority,
-  JobStatus,
-} from '../schemas/job.schema';
+import { JobPriority, JobStatus } from '../schemas/job.schema';
 
 export class CreateJobDto {
   @ApiProperty({ example: 'Aarav' })

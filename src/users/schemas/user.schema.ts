@@ -68,7 +68,6 @@ export class User {
   @Prop({ enum: UserRole, default: UserRole.User, index: true })
   role: UserRole;
 
-
   @Prop({ type: UserLocationSchema })
   location?: UserLocation;
 

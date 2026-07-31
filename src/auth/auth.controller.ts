@@ -33,7 +33,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   @Post('register')
   @ApiOperation({
@@ -47,7 +47,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Login with email and password and return JWT access + refresh tokens',
+    summary:
+      'Login with email and password and return JWT access + refresh tokens',
   })
   @ApiOkResponse({ description: 'User logged in successfully.' })
   login(@Body() loginDto: LoginDto) {
@@ -57,7 +58,8 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Exchange a valid refresh token for a new access + refresh token pair',
+    summary:
+      'Exchange a valid refresh token for a new access + refresh token pair',
   })
   @ApiOkResponse({ description: 'Tokens refreshed successfully.' })
   refresh(@Body() dto: RefreshTokenDto) {
@@ -82,8 +84,4 @@ export class AuthController {
   profile(@Req() req: AuthenticatedRequest) {
     return this.usersService.findById(req.user.userId);
   }
-
-
-
-
 }

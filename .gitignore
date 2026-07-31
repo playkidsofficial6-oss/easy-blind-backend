@@ -3,6 +3,7 @@ node_modules/
 
 # production build
 dist/
+/uploads
 
 # test coverage
 coverage/

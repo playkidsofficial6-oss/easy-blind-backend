@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
-import { Job, JobDocument, JobMeasurements, JobStatus } from '../jobs/schemas/job.schema';
+import {
+  Job,
+  JobDocument,
+  JobMeasurements,
+  JobStatus,
+} from '../jobs/schemas/job.schema';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
 import { RoomDto, OpeningDto } from './dtos/create-measurement.dto';
@@ -11,7 +16,7 @@ export class MeasurementsService {
   constructor(
     @InjectModel(Job.name)
     private readonly jobModel: Model<JobDocument>,
-  ) { }
+  ) {}
 
   private processMeasurementData(
     dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
@@ -85,16 +90,15 @@ export class MeasurementsService {
       : { jobId: createDto.jobId };
 
     const updateFields: Record<string, any> = { measurements: summaryData };
-    if (createDto.status === 'Completed' || summaryData.status === 'Completed') {
+    if (
+      createDto.status === 'Completed' ||
+      summaryData.status === 'Completed'
+    ) {
       updateFields.status = JobStatus.Quoting;
     }
 
     const updatedJob = await this.jobModel
-      .findOneAndUpdate(
-        filter,
-        { $set: updateFields },
-        { new: true },
-      )
+      .findOneAndUpdate(filter, { $set: updateFields }, { new: true })
       .exec();
 
     if (!updatedJob) {
@@ -114,16 +118,15 @@ export class MeasurementsService {
       : { jobId: id };
 
     const updateFields: Record<string, any> = { measurements: summaryData };
-    if (updateDto.status === 'Completed' || summaryData.status === 'Completed') {
+    if (
+      updateDto.status === 'Completed' ||
+      summaryData.status === 'Completed'
+    ) {
       updateFields.status = JobStatus.Quoting;
     }
 
     const updated = await this.jobModel
-      .findOneAndUpdate(
-        filter,
-        { $set: updateFields },
-        { new: true },
-      )
+      .findOneAndUpdate(filter, { $set: updateFields }, { new: true })
       .exec();
 
     if (!updated || !updated.measurements) {
@@ -145,5 +148,4 @@ export class MeasurementsService {
     }
     return job.measurements;
   }
-
 }

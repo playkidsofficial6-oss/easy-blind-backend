@@ -112,7 +112,9 @@ export class JobsController {
   }
 
   @Patch(':id/fitter-travel')
-  @ApiOperation({ summary: 'Mark an assigned fitter as travelling to this job' })
+  @ApiOperation({
+    summary: 'Mark an assigned fitter as travelling to this job',
+  })
   @ApiOkResponse({ description: 'Fitter workflow changed to travelling.' })
   startFitterTravel(
     @Param('id', ParseObjectIdPipe) id: string,
@@ -133,7 +135,8 @@ export class JobsController {
 
   @Patch(':id/fitter-complete')
   @ApiOperation({
-    summary: 'Complete the fitter workflow for this job and upload fitting photos',
+    summary:
+      'Complete the fitter workflow for this job and upload fitting photos',
   })
   @ApiOkResponse({ description: 'Fitter workflow completed successfully.' })
   completeFitterWorkflow(

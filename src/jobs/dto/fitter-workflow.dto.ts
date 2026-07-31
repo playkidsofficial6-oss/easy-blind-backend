@@ -16,7 +16,10 @@ export class FitterWorkflowDto {
   @ApiPropertyOptional({
     type: [String],
     description: 'URLs of photos uploaded upon fitting completion',
-    example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    example: [
+      'https://example.com/photo1.jpg',
+      'https://example.com/photo2.jpg',
+    ],
   })
   @IsOptional()
   @IsArray()

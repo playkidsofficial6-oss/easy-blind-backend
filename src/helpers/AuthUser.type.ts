@@ -1,8 +1,8 @@
-import { Types } from "mongoose";
-import { UserRole } from "../users/schemas/user.schema";
+import { Types } from 'mongoose';
+import { UserRole } from '../users/schemas/user.schema';
 
 export interface AuthUser {
-    userId: Types.ObjectId,
-    email: string,
-    role: UserRole
+  userId: Types.ObjectId;
+  email: string;
+  role: UserRole;
 }

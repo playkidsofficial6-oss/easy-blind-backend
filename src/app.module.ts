@@ -26,4 +26,4 @@ import { FlutterModule } from './flutter/flutter.module';
     FlutterModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -12,9 +12,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 @Module({
   imports: [
     UsersModule,
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-    ]),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -92,7 +92,8 @@ const MANAGER_ROOM = 'live-location:managers';
   },
 })
 export class LiveLocationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Namespace<
     ClientToServerEvents,
@@ -108,7 +109,7 @@ export class LiveLocationGateway
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly liveLocationService: LiveLocationService,
-  ) { }
+  ) {}
 
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     try {
@@ -253,10 +254,7 @@ export class LiveLocationGateway
       longitude: location.location.coordinates[0],
     } satisfies LiveLocationSocketEvent);
 
-    console.log(
-      `📡 Broadcasting to managers:`,
-      location.userId,
-    );
+    console.log(`📡 Broadcasting to managers:`, location.userId);
   }
 
   private broadcastUserPresence(

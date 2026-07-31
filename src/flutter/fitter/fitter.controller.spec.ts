@@ -27,9 +27,15 @@ describe('FitterController', () => {
     fitterService = {
       home: jest.fn().mockResolvedValue({ message: 'Home data', data: {} }),
       myJobs: jest.fn().mockResolvedValue({ message: 'My jobs', data: [] }),
-      getJobById: jest.fn().mockResolvedValue({ message: 'Job details', data: {} }),
-      jobStatus: jest.fn().mockResolvedValue({ message: 'Status updated', data: {} }),
-      cancelJob: jest.fn().mockResolvedValue({ message: 'Job cancelled', data: {} }),
+      getJobById: jest
+        .fn()
+        .mockResolvedValue({ message: 'Job details', data: {} }),
+      jobStatus: jest
+        .fn()
+        .mockResolvedValue({ message: 'Status updated', data: {} }),
+      cancelJob: jest
+        .fn()
+        .mockResolvedValue({ message: 'Job cancelled', data: {} }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -52,13 +58,14 @@ describe('FitterController', () => {
   describe('home', () => {
     it('should throw ForbiddenException if user is not a Fitter', async () => {
       await expect(
-        controller.home({ user: mockSalesmanUser } as any),
+        controller.home({ user: mockSalesmanUser } as any, {} as any),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should return home data for valid Fitter user', async () => {
-      const res = await controller.home({ user: mockFitterUser } as any);
-      expect(fitterService.home).toHaveBeenCalledWith(mockFitterUserId);
+      const dto = { page: 1, limit: 10 };
+      const res = await controller.home({ user: mockFitterUser } as any, dto as any);
+      expect(fitterService.home).toHaveBeenCalledWith(mockFitterUserId, dto);
       expect(res).toEqual({ message: 'Home data', data: {} });
     });
   });
@@ -72,8 +79,14 @@ describe('FitterController', () => {
 
     it('should return myJobs data for valid Fitter user', async () => {
       const query = { date: 'Today' };
-      const res = await controller.myJobs({ user: mockFitterUser } as any, query);
-      expect(fitterService.myJobs).toHaveBeenCalledWith(mockFitterUserId, query);
+      const res = await controller.myJobs(
+        { user: mockFitterUser } as any,
+        query,
+      );
+      expect(fitterService.myJobs).toHaveBeenCalledWith(
+        mockFitterUserId,
+        query,
+      );
       expect(res).toEqual({ message: 'My jobs', data: [] });
     });
   });
@@ -86,8 +99,14 @@ describe('FitterController', () => {
     });
 
     it('should return job details for valid Fitter user', async () => {
-      const res = await controller.getJobById({ user: mockFitterUser } as any, 'job123');
-      expect(fitterService.getJobById).toHaveBeenCalledWith(mockFitterUserId, 'job123');
+      const res = await controller.getJobById(
+        { user: mockFitterUser } as any,
+        'job123',
+      );
+      expect(fitterService.getJobById).toHaveBeenCalledWith(
+        mockFitterUserId,
+        'job123',
+      );
       expect(res).toEqual({ message: 'Job details', data: {} });
     });
   });
@@ -95,11 +114,9 @@ describe('FitterController', () => {
   describe('jobStatus', () => {
     it('should throw ForbiddenException if user is not a Fitter', async () => {
       await expect(
-        controller.jobStatus(
-          { user: mockSalesmanUser } as any,
-          'job123',
-          { status: JobStatus.Fitting },
-        ),
+        controller.jobStatus({ user: mockSalesmanUser } as any, 'job123', {
+          status: JobStatus.Fitting,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -122,11 +139,9 @@ describe('FitterController', () => {
   describe('cancelJob', () => {
     it('should throw ForbiddenException if user is not a Fitter', async () => {
       await expect(
-        controller.cancelJob(
-          { user: mockSalesmanUser } as any,
-          'job123',
-          { reason: 'Customer requested' },
-        ),
+        controller.cancelJob({ user: mockSalesmanUser } as any, 'job123', {
+          reason: 'Customer requested',
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 

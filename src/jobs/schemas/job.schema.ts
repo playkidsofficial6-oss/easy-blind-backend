@@ -37,10 +37,6 @@ export enum PropertyType {
   'Other' = 'Other',
 }
 
-
-
-
-
 export enum OpeningType {
   WINDOW = 'Window',
   DOOR = 'Door',
@@ -317,7 +313,6 @@ export class Job {
 
   @Prop({ type: String, required: false })
   cancelReason?: string;
-
 
   @Prop({ type: JobMeasurementsSchema, required: false })
   measurements?: JobMeasurements;

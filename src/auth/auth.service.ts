@@ -33,9 +33,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {
-    this.refreshSecret = this.configService.getOrThrow<string>(
-      'JWT_REFRESH_SECRET',
-    );
+    this.refreshSecret =
+      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     this.refreshExpiresIn = this.configService.get<string>(
       'JWT_REFRESH_EXPIRES_IN',
       '7d',
@@ -71,15 +70,13 @@ export class AuthService {
       email: user.email,
       role: user.role,
       checkedIn: user.checkedIn,
-      phoneNumber: user?.phoneNumber || "-",
+      phoneNumber: user?.phoneNumber || '-',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
   }
 
-  async refreshTokens(
-    currentRefreshToken: string,
-  ): Promise<AuthResponse> {
+  async refreshTokens(currentRefreshToken: string): Promise<AuthResponse> {
     // 1. Verify the refresh token signature & expiry
     let payload: { sub: string };
     try {
@@ -133,9 +130,7 @@ export class AuthService {
 
   // ─── Private helpers ───────────────────────────────────────────
 
-  private async buildAuthResponse(
-    user: UserResponse,
-  ): Promise<AuthResponse> {
+  private async buildAuthResponse(user: UserResponse): Promise<AuthResponse> {
     const accessPayload: JwtPayload = {
       sub: user._id,
       email: user.email,

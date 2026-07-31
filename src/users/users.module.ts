@@ -28,4 +28,4 @@ import type { SignOptions } from 'jsonwebtoken';
   providers: [UsersService],
   exports: [UsersService],
 })
-export class UsersModule { }
+export class UsersModule {}

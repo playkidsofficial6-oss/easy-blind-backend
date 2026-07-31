@@ -13,11 +13,7 @@ import { SalesmanWorkflowDto } from './dto/salesman-workflow.dto';
 import { AssignFitterDto } from './dto/assign-fitter.dto';
 import { FitterWorkflowDto } from './dto/fitter-workflow.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
-import {
-  Job,
-  JobDocument,
-  JobStatus,
-} from './schemas/job.schema';
+import { Job, JobDocument, JobStatus } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { LiveLocationGateway } from '../live-location/live-location.gateway';
@@ -36,7 +32,7 @@ export class JobsService implements OnModuleInit {
     private readonly liveLocationGateway: LiveLocationGateway,
     @Inject(forwardRef(() => LiveLocationService))
     private readonly liveLocationService: LiveLocationService,
-  ) { }
+  ) {}
 
   onModuleInit() {
     this.backfillJobIds().catch((err) => {
@@ -56,7 +52,6 @@ export class JobsService implements OnModuleInit {
   private getYear(date = new Date()): string {
     return String(date.getFullYear());
   }
-
 
   private formatJobId(sequence: number, year = this.getYear()): string {
     return `${JOB_ID_PREFIX}-${year}-${String(sequence).padStart(
@@ -308,7 +303,9 @@ export class JobsService implements OnModuleInit {
           );
           if (resolved) updates.assignedSalesManager = resolved;
         } else if (!anyJob.assignedSalesManager) {
-          const resolved = await this.resolveUserObjectId(UserRole.SalesManager);
+          const resolved = await this.resolveUserObjectId(
+            UserRole.SalesManager,
+          );
           if (resolved) updates.assignedSalesManager = resolved;
         }
 
@@ -516,14 +513,8 @@ export class JobsService implements OnModuleInit {
     const [items, total] = await Promise.all([
       this.jobModel
         .find(filter)
-        .populate(
-          'assignedSalesManager',
-          'name email role phone checkedIn',
-        )
-        .populate(
-          'assignedSalesman',
-          'name email role phone checkedIn',
-        )
+        .populate('assignedSalesManager', 'name email role phone checkedIn')
+        .populate('assignedSalesman', 'name email role phone checkedIn')
         .populate('assignedFitter', 'name email role phone checkedIn')
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -677,10 +668,7 @@ export class JobsService implements OnModuleInit {
     });
   }
 
-  async assignFitter(
-    id: string,
-    dto: AssignFitterDto,
-  ): Promise<JobDocument> {
+  async assignFitter(id: string, dto: AssignFitterDto): Promise<JobDocument> {
     const job = await this.findByMongoIdOrJobId(id);
     if (!job) {
       throw new NotFoundException(`Job with id ${id} was not found`);
@@ -692,7 +680,9 @@ export class JobsService implements OnModuleInit {
     });
 
     if (!fitterUser) {
-      throw new NotFoundException(`Fitter with id ${dto.fitterId} was not found`);
+      throw new NotFoundException(
+        `Fitter with id ${dto.fitterId} was not found`,
+      );
     }
 
     await this.jobModel
@@ -878,14 +868,8 @@ export class JobsService implements OnModuleInit {
   private async findByMongoIdOrJobId(id: string): Promise<JobDocument | null> {
     return this.jobModel
       .findOne(this.getIdentifierFilter(id))
-      .populate(
-        'assignedSalesManager',
-        'name email role phone checkedIn',
-      )
-      .populate(
-        'assignedSalesman',
-        'name email role phone checkedIn',
-      )
+      .populate('assignedSalesManager', 'name email role phone checkedIn')
+      .populate('assignedSalesman', 'name email role phone checkedIn')
       .populate('assignedFitter', 'name email role phone checkedIn')
       .exec();
   }
@@ -896,11 +880,7 @@ export class JobsService implements OnModuleInit {
     }
 
     return {
-      $or: [
-        { jobId: id },
-        { jobId: id.toUpperCase() },
-        { _id: id },
-      ],
+      $or: [{ jobId: id }, { jobId: id.toUpperCase() }, { _id: id }],
     };
   }
 

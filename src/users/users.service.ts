@@ -48,12 +48,7 @@ type UserPlainObject = User & {
 type UserUpdatePayload = Partial<
   Pick<
     User,
-    | 'name'
-    | 'email'
-    | 'phoneNumber'
-    | 'passwordHash'
-    | 'role'
-    | 'location'
+    'name' | 'email' | 'phoneNumber' | 'passwordHash' | 'role' | 'location'
   >
 >;
 
@@ -63,7 +58,7 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserResponse> {
     const normalizedEmail = createUserDto.email.toLowerCase().trim();
@@ -224,9 +219,10 @@ export class UsersService {
     }
   }
 
-
-
-  async checkIn(userId: string | mongoose.Types.ObjectId, targetUserId?: string) {
+  async checkIn(
+    userId: string | mongoose.Types.ObjectId,
+    targetUserId?: string,
+  ) {
     const idToUpdate = targetUserId || userId;
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
@@ -242,7 +238,10 @@ export class UsersService {
     };
   }
 
-  async checkOut(userId: string | mongoose.Types.ObjectId, targetUserId?: string) {
+  async checkOut(
+    userId: string | mongoose.Types.ObjectId,
+    targetUserId?: string,
+  ) {
     const idToUpdate = targetUserId || userId;
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
@@ -259,7 +258,9 @@ export class UsersService {
   }
 
   private toResponse(user: UserDocument): UserResponse {
-    const plainUser = user.toObject() as UserPlainObject & { checkedIn?: boolean };
+    const plainUser = user.toObject() as UserPlainObject & {
+      checkedIn?: boolean;
+    };
 
     return {
       _id: plainUser._id.toString(),
@@ -317,7 +318,10 @@ export class UsersService {
     };
   }
 
-  async changePassword(userId: mongoose.Types.ObjectId, dto: ChangePasswordDto) {
+  async changePassword(
+    userId: mongoose.Types.ObjectId,
+    dto: ChangePasswordDto,
+  ) {
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }

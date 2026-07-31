@@ -31,6 +31,11 @@ describe('FitterService', () => {
       find: jest.fn(),
       findById: jest.fn(),
       findOne: jest.fn(),
+      countDocuments: jest.fn().mockImplementation(() =>
+        Object.assign(Promise.resolve(1), {
+          exec: jest.fn().mockResolvedValue(1),
+        }),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -52,9 +57,9 @@ describe('FitterService', () => {
 
   describe('getJobById', () => {
     it('should throw BadRequestException if jobId is invalid', async () => {
-      await expect(service.getJobById(mockFitterId, 'invalid-id')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.getJobById(mockFitterId, 'invalid-id'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException if job is not found or not assigned', async () => {
@@ -63,9 +68,9 @@ describe('FitterService', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.getJobById(mockFitterId, mockValidJobId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getJobById(mockFitterId, mockValidJobId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should return job details if found and assigned', async () => {
@@ -84,7 +89,9 @@ describe('FitterService', () => {
   describe('jobStatus', () => {
     it('should throw BadRequestException if jobId is invalid', async () => {
       await expect(
-        service.jobStatus(mockFitterId, 'invalid-id', { status: JobStatus.Fitting }),
+        service.jobStatus(mockFitterId, 'invalid-id', {
+          status: JobStatus.Fitting,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -92,7 +99,9 @@ describe('FitterService', () => {
       jobModelMock.findOne.mockResolvedValue(null);
 
       await expect(
-        service.jobStatus(mockFitterId, mockValidJobId, { status: JobStatus.Fitting }),
+        service.jobStatus(mockFitterId, mockValidJobId, {
+          status: JobStatus.Fitting,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -113,7 +122,9 @@ describe('FitterService', () => {
   describe('cancelJob', () => {
     it('should throw BadRequestException if jobId is invalid', async () => {
       await expect(
-        service.cancelJob(mockFitterId, 'invalid-id', { reason: 'Cancelled by client' }),
+        service.cancelJob(mockFitterId, 'invalid-id', {
+          reason: 'Cancelled by client',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -121,7 +132,9 @@ describe('FitterService', () => {
       jobModelMock.findOne.mockResolvedValue(null);
 
       await expect(
-        service.cancelJob(mockFitterId, mockValidJobId, { reason: 'Cancelled by client' }),
+        service.cancelJob(mockFitterId, mockValidJobId, {
+          reason: 'Cancelled by client',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -144,18 +157,23 @@ describe('FitterService', () => {
   describe('home', () => {
     it('should return home page statistics and today jobs', async () => {
       const today = new Date();
-      const jobToday = mockJobDoc({ scheduledAt: today, status: JobStatus.FitterAssigned });
+      const jobToday = mockJobDoc({
+        scheduledAt: today,
+        status: JobStatus.FitterAssigned,
+      });
 
       jobModelMock.find.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([jobToday]),
       });
       jobModelMock.countDocuments = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(1),
       });
 
-      const res = await service.home(mockFitterId);
+      const res = await service.home(mockFitterId, { page: 1, limit: 10 });
       expect(res.message).toBe('All home page datas are fetched successfully');
       expect(res.data.completed).toBe(1);
       expect(res.data.todayJobs).toHaveLength(1);
@@ -164,15 +182,20 @@ describe('FitterService', () => {
 
   describe('myJobs', () => {
     it('should return filtered jobs based on query taskFilter', async () => {
-      const jobToday = mockJobDoc({ status: JobStatus.Fitting, scheduledAt: new Date() });
+      const jobToday = mockJobDoc({
+        status: JobStatus.Fitting,
+        scheduledAt: new Date(),
+      });
 
       jobModelMock.find.mockReturnValue({
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([jobToday]),
       });
 
-      const res = await service.myJobs(mockFitterId, { date: 'Today' });
+      const res = await service.myJobs(mockFitterId, { date: 'Today', page: 1, limit: 10 });
       expect(res.message).toBe('My job page datas are fetched successfully');
       expect(res.data).toHaveLength(1);
     });

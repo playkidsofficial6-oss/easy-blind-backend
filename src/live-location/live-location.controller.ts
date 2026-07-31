@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -31,7 +24,7 @@ export class LiveLocationController {
   constructor(
     private readonly liveLocationService: LiveLocationService,
     private readonly liveLocationGateway: LiveLocationGateway,
-  ) { }
+  ) {}
 
   @Post('update')
   @ApiOperation({
@@ -60,6 +53,4 @@ export class LiveLocationController {
   findAll(@Req() request: AuthenticatedRequest) {
     return this.liveLocationService.findAll(request.user);
   }
-
-
 }
