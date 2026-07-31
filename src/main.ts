@@ -64,6 +64,7 @@ async function bootstrap() {
     .addTag('flutter-salesman', 'Flutter salesman app endpoints')
     .addTag('flutter-fitter', 'Flutter fitter app endpoints')
     .addTag('flutter-uploads', 'Flutter image upload endpoints')
+    .addTag('flutter-live-location', 'Flutter live location endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
