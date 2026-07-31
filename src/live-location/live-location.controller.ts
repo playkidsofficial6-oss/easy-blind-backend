@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Post,
   Req,
   UseGuards,
@@ -16,7 +15,6 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from '../auth/interfaces/jwt-user.interface';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { UpdateLiveLocationDto } from './dto/update-live-location.dto';
 import { LiveLocationGateway } from './live-location.gateway';
 import { LiveLocationService } from './live-location.service';
@@ -63,14 +61,5 @@ export class LiveLocationController {
     return this.liveLocationService.findAll(request.user);
   }
 
-  @Get(':userId')
-  @ApiOperation({ summary: 'Read a live location by user id' })
-  @ApiOkResponse({ description: 'Live location returned successfully.' })
-  findByUserId(
-    @Req() request: AuthenticatedRequest,
-    @Param('userId', ParseObjectIdPipe) userId: string,
-  ) {
-    return this.liveLocationService.findByUserId(request.user, userId);
-  }
 
 }

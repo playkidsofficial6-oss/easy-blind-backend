@@ -143,23 +143,7 @@ export class LiveLocationService {
     );
   }
 
-  async findByUserId(
-    authUser: JwtAuthenticatedUser,
-    userId: string,
-  ): Promise<ApiResponse<LiveLocationResponse>> {
-    this.assertCanAccessUserLocation(authUser, userId);
 
-    const user = await this.userModel.findById(userId).exec();
-
-    if (!user) {
-      throw new NotFoundException('Live location not found for this user');
-    }
-
-    return this.success(
-      'Live location returned successfully',
-      this.toResponse(user),
-    );
-  }
 
   private assertCanAccessAll(authUser: JwtAuthenticatedUser): void {
     if (
