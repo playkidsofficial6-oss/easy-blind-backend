@@ -7,6 +7,8 @@ import { UserRole } from '../../users/schemas/user.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
 import { CancelJobDto } from './dto/cancel-job.dto';
+import { HomeDto } from './dto/home.dto';
+import { CompletedJobsDto } from './dto/completed-jobs.dto';
 
 @ApiTags('flutter-salesman')
 @ApiBearerAuth()
@@ -17,11 +19,11 @@ export class SalesManController {
 
   @Get("home")
   @ApiOperation({ summary: 'Get salesman dashboard home data' })
-  async home(@Request() { user }: { user: AuthUser }): Promise<any> {
+  async home(@Request() { user }: { user: AuthUser }, @Query() dto: HomeDto): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
     }
-    return await this.salesManService.home(user.userId);
+    return await this.salesManService.home(user.userId, dto);
   }
 
   @Get("my-jobs")
@@ -36,11 +38,11 @@ export class SalesManController {
 
   @Get("job/completed")
   @ApiOperation({ summary: 'Get list of completed jobs for logged-in salesman' })
-  async completedJobs(@Request() { user }: { user: AuthUser }): Promise<any> {
+  async completedJobs(@Request() { user }: { user: AuthUser }, @Query() dto: CompletedJobsDto): Promise<any> {
     if (user.role !== UserRole.Salesman) {
       throw new ForbiddenException("You are not authorized to access this route")
     }
-    return await this.salesManService.completedJobs(user.userId);
+    return await this.salesManService.completedJobs(user.userId, dto);
   }
 
   @Get("job/:id")

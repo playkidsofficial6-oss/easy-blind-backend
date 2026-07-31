@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsIn, IsOptional } from "class-validator";
+import { IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsPositive } from "class-validator";
 import { JobPriority, JobStatus } from "../../../jobs/schemas/job.schema";
+import { Type } from "class-transformer";
 
 export class MyJobsFilterDto {
 
@@ -28,4 +29,20 @@ export class MyJobsFilterDto {
     @IsIn(['Villa', 'Apartment', 'Townhouse', 'Office', 'Other'])
     @IsOptional()
     propertyType?: "Villa" | "Apartment" | "Townhouse" | "Office" | "Other";
+
+    @ApiPropertyOptional()
+    @IsPositive()
+    @IsInt()
+    @IsNumber()
+    @Type(() => Number)
+    @IsOptional()
+    page: number = 1
+
+    @ApiPropertyOptional()
+    @IsPositive()
+    @IsInt()
+    @IsNumber()
+    @Type(() => Number)
+    @IsOptional()
+    limit: number = 10
 }

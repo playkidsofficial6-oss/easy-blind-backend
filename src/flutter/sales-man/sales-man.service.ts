@@ -4,6 +4,8 @@ import mongoose, { Model, Types } from 'mongoose';
 import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
+import { HomeDto } from './dto/home.dto';
+import { CompletedJobsDto } from './dto/completed-jobs.dto';
 
 @Injectable()
 export class SalesManService {
@@ -11,7 +13,7 @@ export class SalesManService {
         @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>
     ) { }
 
-    async home(assignedSalesman: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
+    async home(assignedSalesman: mongoose.Types.ObjectId | string, dto: HomeDto): Promise<HomeResponseType> {
         const salesmanFilter = {
             assignedSalesman: assignedSalesman
         };
@@ -29,6 +31,8 @@ export class SalesManService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(dto.limit)
+            .skip((dto.page - 1) * dto.limit)
             .exec();
 
         const todayJobs: JobDocument[] = jobs;
@@ -42,6 +46,13 @@ export class SalesManService {
         completed = await this.jobModel.countDocuments({ ...salesmanFilter, status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] } }).exec();
         cancelled = await this.jobModel.countDocuments({ ...salesmanFilter, status: { $in: [JobStatus.SalesmanCancelled] } }).exec();
 
+        const pagination = {
+            page: dto.page,
+            limit: dto.limit,
+            totalData: await this.jobModel.countDocuments({ ...salesmanFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } }),
+            totalPages: Math.ceil((await this.jobModel.countDocuments({ ...salesmanFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })) / dto.limit),
+        }
+
         return {
             message: "All home page datas are fetched successfully",
             data: {
@@ -50,7 +61,8 @@ export class SalesManService {
                 completed,
                 cancelled,
                 todayJobs
-            }
+            },
+            pagination
         };
     }
 
@@ -130,11 +142,21 @@ export class SalesManService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(query.limit)
+            .skip((query.page - 1) * query.limit)
             .exec();
+
+        const pagination = {
+            page: query.page,
+            limit: query.limit,
+            totalData: await this.jobModel.countDocuments(mongoQuery),
+            totalPages: Math.ceil((await this.jobModel.countDocuments(mongoQuery)) / query.limit),
+        }
 
         return {
             message: "My job page datas are fetched successfully",
             data: jobs,
+            pagination
         };
     }
 
@@ -211,7 +233,7 @@ export class SalesManService {
         };
     }
 
-    async completedJobs(user: mongoose.Types.ObjectId | string) {
+    async completedJobs(user: mongoose.Types.ObjectId | string, dto: CompletedJobsDto) {
         const jobs = await this.jobModel.find({
             assignedSalesman: user,
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
@@ -219,10 +241,27 @@ export class SalesManService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(dto.limit)
+            .skip((dto.page - 1) * dto.limit)
             .exec();
+
+        const pagination = {
+            page: dto.page,
+            limit: dto.limit,
+            totalData: await this.jobModel.countDocuments({
+                assignedSalesman: user,
+                status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
+            }),
+            totalPages: Math.ceil((await this.jobModel.countDocuments({
+                assignedSalesman: user,
+                status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
+            })) / dto.limit),
+        };
+
         return {
             message: "Completed jobs fetched successfully",
             data: jobs,
+            pagination
         };
     }
 
@@ -236,11 +275,22 @@ interface HomeResponseType {
         completed: number,
         cancelled: number,
         todayJobs: JobDocument[]
+    },
+    pagination: {
+        page: number,
+        limit: number,
+        totalData: number,
+        totalPages: number
     }
 }
 
 interface MyJobResponseType {
     message: string,
-    data: JobDocument[]
-
+    data: JobDocument[],
+    pagination: {
+        page: number,
+        limit: number,
+        totalData: number,
+        totalPages: number
+    }
 }

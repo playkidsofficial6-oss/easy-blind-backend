@@ -4,6 +4,8 @@ import mongoose, { Model, Types } from 'mongoose';
 import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
+import { HomeDto } from './dto/home.dto';
+import { CompletedJobsDto } from './dto/completed-jobs.dto';
 
 @Injectable()
 export class FitterService {
@@ -11,16 +13,11 @@ export class FitterService {
         @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>
     ) { }
 
-    async home(assignedFitter: mongoose.Types.ObjectId | string): Promise<HomeResponseType> {
-        const isHexId = Types.ObjectId.isValid(assignedFitter);
-        const fitterObjectId = isHexId ? new Types.ObjectId(assignedFitter) : null;
-        const fitterStr = assignedFitter ? assignedFitter.toString() : '';
+    async home(assignedFitter: mongoose.Types.ObjectId | string, dto: HomeDto): Promise<HomeResponseType> {
+
 
         const fitterFilter = {
-            $or: [
-                ...(fitterObjectId ? [{ assignedFitter: fitterObjectId }] : []),
-                ...(fitterStr ? [{ assignedFitter: fitterStr }] : []),
-            ],
+            assignedFitter
         };
 
         const now = new Date();
@@ -36,6 +33,8 @@ export class FitterService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(dto.limit)
+            .skip((dto.page - 1) * dto.limit)
             .exec();
 
         const todayJobs: JobDocument[] = jobs;
@@ -49,6 +48,13 @@ export class FitterService {
         completed = await this.jobModel.countDocuments({ ...fitterFilter, status: { $in: [JobStatus.Completed] } }).exec();
         cancelled = await this.jobModel.countDocuments({ ...fitterFilter, status: { $in: [JobStatus.FitterCancelled, JobStatus.Cancelled] } }).exec();
 
+        const pagination = {
+            page: dto.page,
+            limit: dto.limit,
+            totalData: await this.jobModel.countDocuments({ ...fitterFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.Fitting, JobStatus.TakingPhotos] } }),
+            totalPages: Math.ceil((await this.jobModel.countDocuments({ ...fitterFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.Fitting, JobStatus.TakingPhotos] } })) / dto.limit),
+        }
+
         return {
             message: "All home page datas are fetched successfully",
             data: {
@@ -57,7 +63,8 @@ export class FitterService {
                 completed,
                 cancelled,
                 todayJobs
-            }
+            },
+            pagination
         };
     }
 
@@ -137,11 +144,21 @@ export class FitterService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(query.limit)
+            .skip((query.page - 1) * query.limit)
             .exec();
+
+        const pagination = {
+            page: query.page,
+            limit: query.limit,
+            totalData: await this.jobModel.countDocuments(mongoQuery),
+            totalPages: Math.ceil((await this.jobModel.countDocuments(mongoQuery)) / query.limit),
+        }
 
         return {
             message: "My job page datas are fetched successfully",
             data: jobs,
+            pagination
         };
     }
 
@@ -219,7 +236,7 @@ export class FitterService {
         };
     }
 
-    async completedJobs(user: mongoose.Types.ObjectId | string) {
+    async completedJobs(user: mongoose.Types.ObjectId | string, query: CompletedJobsDto) {
 
         const jobs = await this.jobModel.find({
             assignedFitter: user,
@@ -228,10 +245,21 @@ export class FitterService {
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
+            .limit(query.limit)
+            .skip((query.page - 1) * query.limit)
             .exec();
+
+        const pagination = {
+            page: query.page,
+            limit: query.limit,
+            totalData: await this.jobModel.countDocuments({ assignedFitter: user, status: { $in: [JobStatus.Completed] } }),
+            totalPages: Math.ceil((await this.jobModel.countDocuments({ assignedFitter: user, status: { $in: [JobStatus.Completed] } })) / query.limit),
+        }
+
         return {
             message: "Completed jobs fetched successfully",
             data: jobs,
+            pagination
         };
     }
 }
@@ -245,9 +273,21 @@ interface HomeResponseType {
         cancelled: number;
         todayJobs: JobDocument[];
     };
+    pagination: {
+        page: number;
+        limit: number;
+        totalData: number;
+        totalPages: number;
+    };
 }
 
 interface MyJobResponseType {
     message: string;
     data: JobDocument[];
+    pagination: {
+        page: number;
+        limit: number;
+        totalData: number;
+        totalPages: number;
+    };
 }

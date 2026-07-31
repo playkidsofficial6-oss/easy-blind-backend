@@ -7,6 +7,8 @@ import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
 import { CancelJobDto } from '../sales-man/dto/cancel-job.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { UserRole } from '../../users/schemas/user.schema';
+import { HomeDto } from './dto/home.dto';
+import { CompletedJobsDto } from './dto/completed-jobs.dto';
 
 @ApiTags('flutter-fitter')
 @ApiBearerAuth()
@@ -17,11 +19,11 @@ export class FitterController {
 
   @Get("home")
   @ApiOperation({ summary: 'Get fitter dashboard home data' })
-  async home(@Request() { user }: { user: AuthUser }): Promise<any> {
+  async home(@Request() { user }: { user: AuthUser }, @Query() dto: HomeDto): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
     }
-    return await this.fitterService.home(user.userId);
+    return await this.fitterService.home(user.userId, dto);
   }
 
   @Get("my-jobs")
@@ -35,11 +37,11 @@ export class FitterController {
 
   @Get("job/completed")
   @ApiOperation({ summary: 'Get list of completed jobs for logged-in fitter' })
-  async completedJobs(@Request() { user }: { user: AuthUser }): Promise<any> {
+  async completedJobs(@Request() { user }: { user: AuthUser }, @Query() dto: CompletedJobsDto): Promise<any> {
     if (user.role !== UserRole.Fitter) {
       throw new ForbiddenException("You are not authorized to access this route");
     }
-    return await this.fitterService.completedJobs(user.userId);
+    return await this.fitterService.completedJobs(user.userId, dto);
   }
 
   @Get("job/:id")
