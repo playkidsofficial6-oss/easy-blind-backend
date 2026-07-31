@@ -57,9 +57,6 @@ export class JobsService implements OnModuleInit {
     return String(date.getFullYear());
   }
 
-  private getCounterKey(year = this.getYear()): string {
-    return `job:${year}`;
-  }
 
   private formatJobId(sequence: number, year = this.getYear()): string {
     return `${JOB_ID_PREFIX}-${year}-${String(sequence).padStart(

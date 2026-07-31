@@ -1,11 +1,9 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
-  Patch,
   Post,
   Req,
   UseGuards,
@@ -23,7 +21,6 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from './interfaces/jwt-user.interface';
 import { AuthService } from './auth.service';
-import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { UsersService } from '../users/users.service';
 
 interface AuthenticatedRequest {

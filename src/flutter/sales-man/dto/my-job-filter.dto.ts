@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEnum, IsIn, IsOptional } from "class-validator";
+import { IsEnum, IsOptional } from "class-validator";
 import { JobPriority, JobStatus, PropertyType } from "../../../jobs/schemas/job.schema";
 
 export class MyJobsFilterDto {

@@ -4,7 +4,6 @@ import mongoose, { Model, Types } from 'mongoose';
 import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
 import { JobStatusDto } from './dto/job-status-change.dto';
-import { AuthUser } from 'src/helpers/AuthUser.type';
 
 @Injectable()
 export class SalesManService {
@@ -192,8 +191,6 @@ export class SalesManService {
             throw new BadRequestException("Invalid job ID");
         }
         const jobObjectId = new Types.ObjectId(jobId);
-        const salesmanObjectId = Types.ObjectId.isValid(salesmanId) ? new Types.ObjectId(salesmanId) : null;
-        const salesmanStr = salesmanId ? salesmanId.toString() : '';
 
         const job = await this.jobModel.findOne({
             _id: jobObjectId,
@@ -215,10 +212,6 @@ export class SalesManService {
     }
 
     async completedJobs(user: mongoose.Types.ObjectId | string) {
-        const isHexId = Types.ObjectId.isValid(user);
-        const userObjectId = isHexId ? new Types.ObjectId(user) : null;
-        const userStr = user ? user.toString() : '';
-
         const jobs = await this.jobModel.find({
             assignedSalesman: user,
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },

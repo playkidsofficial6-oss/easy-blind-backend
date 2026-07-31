@@ -101,8 +101,7 @@ const MANAGER_ROOM = 'live-location:managers';
   },
 })
 export class LiveLocationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Namespace<
     ClientToServerEvents,
@@ -118,7 +117,7 @@ export class LiveLocationGateway
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly liveLocationService: LiveLocationService,
-  ) {}
+  ) { }
 
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     try {
@@ -220,7 +219,6 @@ export class LiveLocationGateway
 
   @SubscribeMessage('job:updated')
   handleJobUpdated(
-    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody()
     payload: {
       assignedSalesManager?: string;
@@ -242,7 +240,6 @@ export class LiveLocationGateway
 
   @SubscribeMessage('job:deleted')
   handleJobDeleted(
-    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody()
     payload: {
       assignedSalesManager?: string;
