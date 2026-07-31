@@ -14,7 +14,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserRole } from '../schemas/user.schema';
-import type { UserStatus } from '../schemas/user.schema';
 
 export class UserLocationDto {
   @ApiProperty({ example: 25.2048 })
@@ -24,12 +23,6 @@ export class UserLocationDto {
   @ApiProperty({ example: 55.2708 })
   @IsNumber()
   lng: number;
-
-  @ApiPropertyOptional({ example: 'Downtown Dubai' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  address?: string;
 }
 
 export class CreateUserDto {
@@ -58,28 +51,6 @@ export class CreateUserDto {
   @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiPropertyOptional({
-    enum: [
-      'Available',
-      'On the way',
-      'In progress',
-      'Completed',
-      'Offline',
-      'Fully Booked',
-    ],
-    example: 'Available',
-  })
-  @IsOptional()
-  @IsEnum([
-    'Available',
-    'On the way',
-    'In progress',
-    'Completed',
-    'Offline',
-    'Fully Booked',
-  ] as UserStatus[])
-  liveStatus?: UserStatus;
-
   @ApiPropertyOptional({ type: UserLocationDto })
   @IsOptional()
   @IsObject()
@@ -91,4 +62,12 @@ export class CreateUserDto {
   @IsOptional()
   @IsBoolean()
   checkedIn?: boolean;
+
+  @ApiPropertyOptional({ example: '+919876543210' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+\d{7,15}$/, {
+    message: 'Phone number must include country code (e.g. +91, +957)',
+  })
+  phoneNumber?: string;
 }

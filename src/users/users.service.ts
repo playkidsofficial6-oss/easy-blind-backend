@@ -10,7 +10,6 @@ import mongoose, { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
-  UserStatus,
   User,
   UserDocument,
   UserLocation,
@@ -27,7 +26,7 @@ export interface UserResponse {
   name: string;
   email: string;
   role: UserRole;
-  liveStatus?: UserStatus;
+  phoneNumber?: string;
   location?: UserLocation;
   checkedIn?: boolean;
   createdAt?: Date;
@@ -51,9 +50,9 @@ type UserUpdatePayload = Partial<
     User,
     | 'name'
     | 'email'
+    | 'phoneNumber'
     | 'passwordHash'
     | 'role'
-    | 'status'
     | 'location'
   >
 >;
@@ -85,6 +84,7 @@ export class UsersService {
       const createdUser = await this.userModel.create({
         name: createUserDto.name.trim(),
         email: normalizedEmail,
+        phoneNumber: createUserDto.phoneNumber?.trim(),
         passwordHash,
         role: createUserDto.role ?? UserRole.User,
       });
@@ -180,6 +180,10 @@ export class UsersService {
       updatePayload.email = normalizedEmail;
     }
 
+    if (updateUserDto.phoneNumber !== undefined) {
+      updatePayload.phoneNumber = updateUserDto.phoneNumber.trim();
+    }
+
     if (updateUserDto.password !== undefined) {
       updatePayload.passwordHash = await bcrypt.hash(
         updateUserDto.password,
@@ -191,15 +195,10 @@ export class UsersService {
       updatePayload.role = updateUserDto.role;
     }
 
-    if (updateUserDto.liveStatus !== undefined) {
-      updatePayload.status = updateUserDto.liveStatus;
-    }
-
     if (updateUserDto.location !== undefined) {
       updatePayload.location = {
         type: 'Point',
         coordinates: [updateUserDto.location.lng, updateUserDto.location.lat],
-        address: updateUserDto.location.address,
         updatedAt: new Date(),
       };
     }
@@ -267,7 +266,7 @@ export class UsersService {
       name: plainUser.name,
       email: plainUser.email,
       role: plainUser.role,
-      liveStatus: plainUser.status,
+      phoneNumber: plainUser.phoneNumber,
       location: plainUser.location,
       checkedIn: plainUser.checkedIn ?? true,
       createdAt: plainUser.createdAt,

@@ -25,9 +25,9 @@ export class SalesManService {
 
         const jobs = await this.jobModel
             .find({ ...salesmanFilter, scheduledAt: { $gte: startOfToday, $lte: endOfToday }, status: { $in: [JobStatus.SalesmanScheduled, JobStatus.SalesmanOnTheWay, JobStatus.FitterReached, JobStatus.Measuring, JobStatus.Quoting] } })
-            .populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
+            .populate('assignedSalesManager', 'name email role phone checkedIn')
+            .populate('assignedSalesman', 'name email role phone checkedIn')
+            .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -126,9 +126,9 @@ export class SalesManService {
 
         const jobs = await this.jobModel
             .find(mongoQuery)
-            .populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
+            .populate('assignedSalesManager', 'name email role phone checkedIn')
+            .populate('assignedSalesman', 'name email role phone checkedIn')
+            .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
 
@@ -196,9 +196,9 @@ export class SalesManService {
             _id: jobObjectId,
             assignedSalesman: salesmanId,
 
-        }).populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
+        }).populate('assignedSalesManager', 'name email role phone checkedIn')
+            .populate('assignedSalesman', 'name email role phone checkedIn')
+            .populate('assignedFitter', 'name email role phone checkedIn')
             .exec();
 
         if (!job) {
@@ -215,9 +215,9 @@ export class SalesManService {
         const jobs = await this.jobModel.find({
             assignedSalesman: user,
             status: { $in: [JobStatus.ReadyForFitting, JobStatus.FitterAssigned, JobStatus.FitterOnTheWay, JobStatus.FitterReached, JobStatus.FitterCancelled, JobStatus.Fitting, JobStatus.TakingPhotos, JobStatus.Completed] },
-        }).populate('assignedSalesManager', 'name email role phone status liveStatus')
-            .populate('assignedSalesman', 'name email role phone status liveStatus')
-            .populate('assignedFitter', 'name email role phone status liveStatus')
+        }).populate('assignedSalesManager', 'name email role phone checkedIn')
+            .populate('assignedSalesman', 'name email role phone checkedIn')
+            .populate('assignedFitter', 'name email role phone checkedIn')
             .sort({ scheduledAt: 1, createdAt: -1 })
             .exec();
         return {

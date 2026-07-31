@@ -24,16 +24,10 @@ export interface LiveLocationResponse {
   _id: string;
   userId: string;
   role: LiveLocationRole;
-  liveStatus?: string;
   location: {
     type: 'Point';
     coordinates: [number, number];
   };
-  accuracy?: number;
-  speed?: number;
-  heading?: number;
-  isOnline: boolean;
-  lastUpdatedAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -63,23 +57,13 @@ export class LiveLocationService {
       );
     }
 
-    const isOnline = updateLiveLocationDto.isOnline ?? true;
     const payload: Partial<User> = {
       location: {
         type: 'Point',
         coordinates: updateLiveLocationDto.location.coordinates,
         updatedAt: new Date(),
       },
-      accuracy: updateLiveLocationDto.accuracy,
-      speed: updateLiveLocationDto.speed,
-      heading: updateLiveLocationDto.heading,
-      isOnline,
-      lastUpdatedAt: new Date(),
     };
-
-    if (!isOnline) {
-      payload.status = 'Offline';
-    }
 
     const updatedUser = await this.userModel
       .findByIdAndUpdate(authUser.userId, { $set: payload }, { new: true })
@@ -112,9 +96,7 @@ export class LiveLocationService {
         authUser.userId,
         {
           $set: {
-            isOnline,
-            liveStatus: isOnline ? 'Available' : 'Offline',
-            lastUpdatedAt: new Date(),
+            checkedIn: isOnline,
           },
         },
         { new: true },
@@ -134,7 +116,7 @@ export class LiveLocationService {
         role: { $in: [UserRole.Salesman, UserRole.Field, UserRole.Fitter] },
         location: { $exists: true },
       })
-      .sort({ lastUpdatedAt: -1 })
+      .sort({ updatedAt: -1 })
       .exec();
 
     return this.success(
@@ -196,16 +178,10 @@ export class LiveLocationService {
       _id: userIdStr,
       userId: userIdStr,
       role: this.toTrackingRole(plainUser.role) ?? LiveLocationRole.Salesman,
-      liveStatus: plainUser.status,
       location: plainUser.location ?? {
         type: 'Point',
         coordinates: [0, 0],
       },
-      accuracy: plainUser.accuracy,
-      speed: plainUser.speed,
-      heading: plainUser.heading,
-      isOnline: plainUser.isOnline ?? true,
-      lastUpdatedAt: plainUser.lastUpdatedAt ?? plainUser.updatedAt ?? new Date(),
       createdAt: plainUser.createdAt,
       updatedAt: plainUser.updatedAt,
     };
@@ -214,7 +190,7 @@ export class LiveLocationService {
   async updateLiveStatus(userId: string): Promise<void> {
     await this.userModel
       .findByIdAndUpdate(userId, {
-        $set: { isOnline: true, liveStatus: "Available", lastUpdatedAt: new Date() },
+        $set: { checkedIn: true },
       })
       .exec();
   }

@@ -518,13 +518,13 @@ export class JobsService implements OnModuleInit {
         .find(filter)
         .populate(
           'assignedSalesManager',
-          'name email role phone status liveStatus',
+          'name email role phone checkedIn',
         )
         .populate(
           'assignedSalesman',
-          'name email role phone status liveStatus',
+          'name email role phone checkedIn',
         )
-        .populate('assignedFitter', 'name email role phone status liveStatus')
+        .populate('assignedFitter', 'name email role phone checkedIn')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -880,13 +880,13 @@ export class JobsService implements OnModuleInit {
       .findOne(this.getIdentifierFilter(id))
       .populate(
         'assignedSalesManager',
-        'name email role phone status liveStatus',
+        'name email role phone checkedIn',
       )
       .populate(
         'assignedSalesman',
-        'name email role phone status liveStatus',
+        'name email role phone checkedIn',
       )
-      .populate('assignedFitter', 'name email role phone status liveStatus')
+      .populate('assignedFitter', 'name email role phone checkedIn')
       .exec();
   }
 

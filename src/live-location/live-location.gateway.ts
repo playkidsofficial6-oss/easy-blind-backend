@@ -65,26 +65,17 @@ type AuthenticatedSocket = Socket<
 interface LiveLocationSocketEvent {
   userId: string;
   role: string;
-  liveStatus?: string;
-  status?: string;
   location: {
     type: 'Point';
     coordinates: [number, number];
   };
   latitude: number;
   longitude: number;
-  accuracy?: number;
-  speed?: number;
-  heading?: number;
-  isOnline: boolean;
-  lastUpdatedAt: Date;
 }
 
 interface LiveLocationPresenceEvent {
   userId: string;
   role: UserRole;
-  isOnline: boolean;
-  lastUpdatedAt: Date;
 }
 
 interface SocketHandshakeAuth {
@@ -134,9 +125,6 @@ export class LiveLocationGateway
 
       if (this.canShareLocation(authUser.role)) {
         await this.liveLocationService.setOnlineStatus(authUser, true);
-        await this.usersService.update(authUser.userId, {
-          liveStatus: 'Available',
-        });
         this.broadcastUserPresence(authUser, true);
       }
 
@@ -172,9 +160,6 @@ export class LiveLocationGateway
     if (this.canShareLocation(authUser.role)) {
       try {
         await this.liveLocationService.setOnlineStatus(authUser, false);
-        await this.usersService.update(authUser.userId, {
-          liveStatus: 'Offline',
-        });
         this.broadcastUserPresence(authUser, false);
       } catch (error) {
         this.logger.error(
@@ -263,22 +248,14 @@ export class LiveLocationGateway
     this.server.to(MANAGER_ROOM).emit('location:updated', {
       userId: location.userId,
       role: location.role,
-      liveStatus: location.liveStatus,
-      status: location.liveStatus,
       location: location.location,
       latitude: location.location.coordinates[1],
       longitude: location.location.coordinates[0],
-      accuracy: location.accuracy,
-      speed: location.speed,
-      heading: location.heading,
-      isOnline: location.isOnline,
-      lastUpdatedAt: location.lastUpdatedAt,
     } satisfies LiveLocationSocketEvent);
 
     console.log(
       `📡 Broadcasting to managers:`,
       location.userId,
-      `liveStatus: ${location.liveStatus}`,
     );
   }
 
@@ -291,8 +268,6 @@ export class LiveLocationGateway
       .emit(isOnline ? 'user:online' : 'user:offline', {
         userId: authUser.userId,
         role: authUser.role,
-        isOnline,
-        lastUpdatedAt: new Date(),
       } satisfies LiveLocationPresenceEvent);
   }
 

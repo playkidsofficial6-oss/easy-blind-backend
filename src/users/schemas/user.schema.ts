@@ -1,18 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type UserStatus =
-  | 'Available'
-  | 'On the way'
-  | 'In progress'
-  | 'Completed'
-  | 'Offline'
-  | 'Fully Booked';
-
-/**
- * Native GeoJSON Point sub-document.
- * coordinates = [longitude, latitude] — GeoJSON standard order.
- */
 @Schema({ _id: false, versionKey: false })
 export class UserLocation {
   @Prop({
@@ -28,9 +16,6 @@ export class UserLocation {
    */
   @Prop({ type: [Number], required: true })
   coordinates: [number, number];
-
-  @Prop({ trim: true, maxlength: 255 })
-  address?: string;
 
   @Prop({ type: Date })
   updatedAt?: Date;
@@ -63,44 +48,32 @@ export class User {
   })
   email: string;
 
+  @Prop({
+    required: false,
+    unique: true,
+    trim: true,
+    index: true,
+    validate: {
+      validator: function (v: string) {
+        return /^\+\d{7,15}$/.test(v);
+      },
+      message: 'Phone number must include country code (e.g. +91, +957)',
+    },
+  })
+  phoneNumber?: string;
+
   @Prop({ required: true, select: false })
   passwordHash: string;
 
   @Prop({ enum: UserRole, default: UserRole.User, index: true })
   role: UserRole;
 
-  @Prop({
-    enum: [
-      'Available',
-      'On the way',
-      'In progress',
-      'Completed',
-      'Offline',
-      'Fully Booked',
-    ],
-  })
-  status?: UserStatus;
 
   @Prop({ type: UserLocationSchema })
   location?: UserLocation;
 
   @Prop({ type: Boolean, default: true, index: true })
-  isOnline?: boolean;
-
-  @Prop({ type: Boolean, default: true, index: true })
   checkedIn?: boolean;
-
-  @Prop({ type: Date })
-  lastUpdatedAt?: Date;
-
-  @Prop({ type: Number, min: 0 })
-  accuracy?: number;
-
-  @Prop({ type: Number, min: 0 })
-  speed?: number;
-
-  @Prop({ type: Number, min: 0, max: 360 })
-  heading?: number;
 
   /** Hashed refresh token — never returned in queries by default. */
   @Prop({ select: false })

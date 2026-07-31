@@ -1,16 +1,12 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
-  IsBoolean,
   IsEnum,
   IsNumber,
   IsObject,
-  IsOptional,
-  Max,
-  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -39,28 +35,4 @@ export class UpdateLiveLocationDto {
   @ValidateNested()
   @Type(() => GeoPointDto)
   location: GeoPointDto;
-
-  @ApiPropertyOptional({ example: 12.5, minimum: 0 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  accuracy?: number;
-
-  @ApiPropertyOptional({ example: 4.2, minimum: 0 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  speed?: number;
-
-  @ApiPropertyOptional({ example: 180, minimum: 0, maximum: 360 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(360)
-  heading?: number;
-
-  @ApiPropertyOptional({ example: true, default: true })
-  @IsOptional()
-  @IsBoolean()
-  isOnline?: boolean;
 }
