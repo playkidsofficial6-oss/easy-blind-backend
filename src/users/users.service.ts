@@ -110,8 +110,11 @@ export class UsersService {
       return {
         _id: userIdStr,
         userId: userIdStr,
+        user: this.toResponse(user),
+        phone: plainUser.phoneNumber,
         location: plainUser.location,
         status: plainUser.status ?? 'Available',
+        capacity: 5,
         createdAt: plainUser.createdAt,
         updatedAt: plainUser.updatedAt,
       };
