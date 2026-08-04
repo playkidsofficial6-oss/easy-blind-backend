@@ -15,7 +15,7 @@ import { CompletedJobsDto } from './dto/completed-jobs.dto';
 export class SalesManService {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
-  ) {}
+  ) { }
 
   async home(
     assignedSalesman: mongoose.Types.ObjectId | string,
@@ -319,6 +319,32 @@ export class SalesManService {
     }
     job.status = dto.status;
     job.customerNote = dto.customerNote;
+
+    const now = new Date();
+
+    switch (job.status) {
+      case JobStatus.SalesmanOnTheWay:
+        job.salemanStartedJourneyAt = now;
+        break;
+
+      case JobStatus.SalesmanReached:
+        job.salemanReachedAtDate = now;
+        break;
+
+      case JobStatus.Measuring:
+        job.salemanReachedAtDate ??= now;
+        job.salemanMeasuringStartedAt = now;
+        break;
+
+      case JobStatus.Quoting:
+        job.salemanMeasuringCompletedAt = now;
+        break;
+
+      case JobStatus.ReadyForFitting:
+        job.salemanMeasuringCompletedAt ??= now;
+        job.salemanJobCompletedAt = now;
+        break;
+    }
     await job.save();
     return {
       message: 'Job status updated successfully',

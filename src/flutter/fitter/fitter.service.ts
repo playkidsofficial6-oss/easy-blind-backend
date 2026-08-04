@@ -312,6 +312,30 @@ export class FitterService {
 
             job.status = dto.status;
             job.customerNote = dto.customerNote;
+            const now = new Date();
+
+            switch (job.status) {
+                case JobStatus.FitterOnTheWay:
+                    job.fitterStartedJourneyAt = now;
+                    break;
+
+                case JobStatus.FitterReached:
+                    job.fitterReachedAtDate = now;
+                    break;
+
+                case JobStatus.Fitting:
+                    job.fitterReachedAtDate ??= now;
+                    job.fitterJobStartedAt = now;
+                    break;
+
+                case JobStatus.TakingPhotos:
+                    job.fitterJobCompletedAt = now;
+                    break;
+
+                case JobStatus.Completed:
+                    job.fitterJobCompletedAt ??= now;
+                    break;
+            }
             await job.save();
             return {
                 message: 'Job status updated successfully',

@@ -296,14 +296,6 @@ export class Job {
   @Prop({ trim: true, maxlength: 2000 })
   fittingNotes?: string;
 
-  @Prop()
-  fitterTravelStartedAt?: Date;
-
-  @Prop()
-  fittingStartedAt?: Date;
-
-  @Prop()
-  fittingCompletedAt?: Date;
 
   @Prop({ type: Quotation })
   quotation?: Quotation;
@@ -319,6 +311,34 @@ export class Job {
 
   @Prop({ type: JobMeasurementsSchema, required: false })
   measurements?: JobMeasurements;
+
+  @Prop({ type: Date })
+  salemanStartedJourneyAt?: Date;
+
+  @Prop({ type: Date })
+  salemanReachedAtDate?: Date;
+
+  @Prop({ type: Date })
+  salemanMeasuringStartedAt?: Date;
+
+  @Prop({ type: Date })
+  salemanMeasuringCompletedAt?: Date;
+
+  @Prop({ type: Date })
+  salemanJobCompletedAt?: Date
+
+  @Prop({ type: Date })
+  fitterStartedJourneyAt?: Date
+
+  @Prop({ type: Date })
+  fitterReachedAtDate?: Date
+
+  @Prop({ type: Date })
+  fitterJobStartedAt?: Date
+
+  @Prop({ type: Date })
+  fitterJobCompletedAt?: Date
+
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
