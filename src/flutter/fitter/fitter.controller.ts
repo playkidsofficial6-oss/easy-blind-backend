@@ -26,7 +26,7 @@ import { JobPhotosDto } from './dto/photos.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('flutter/fitter')
 export class FitterController {
-  constructor(private readonly fitterService: FitterService) {}
+  constructor(private readonly fitterService: FitterService) { }
 
   @Get('home')
   @ApiOperation({ summary: 'Get fitter dashboard home data' })
@@ -118,7 +118,7 @@ export class FitterController {
   @ApiOperation({ summary: 'Update job photos by fitter' })
   async jobPhotos(
     @Request() { user }: { user: AuthUser },
-    @Param('jobId') jobId: string,
+    @Query('jobId') jobId: string,
     @Body() dto: JobPhotosDto,
   ): Promise<any> {
     if (user.role !== UserRole.Fitter) {
@@ -126,6 +126,7 @@ export class FitterController {
         'You are not authorized to access this route',
       );
     }
+
     return await this.fitterService.jobPhotos(user.userId, jobId, dto);
   }
 }
