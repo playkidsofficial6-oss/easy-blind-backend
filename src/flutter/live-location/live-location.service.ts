@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuthUser } from 'src/helpers/AuthUser.type';
-import { TrackLiveLocationDto } from './dto/trackLiveLocation.,dto';
+import { TrackLiveLocationDto } from './dto/trackLiveLocation.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/users/schemas/user.schema';
 import { Model } from 'mongoose';
