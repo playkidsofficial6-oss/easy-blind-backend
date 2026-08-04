@@ -431,6 +431,7 @@ export class FitterService {
         }
 
         job.photos = dto.photos;
+        job.remarks = dto.remarks;
         await job.save();
         return {
             message: 'Job photos updated successfully',

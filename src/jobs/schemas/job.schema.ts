@@ -290,6 +290,9 @@ export class Job {
   @Prop({ type: [String], default: [] })
   photos?: string[];
 
+  @Prop({ type: String, trim: true })
+  remarks?: string;
+
   @Prop({ trim: true, maxlength: 2000 })
   fittingNotes?: string;
 
