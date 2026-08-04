@@ -296,26 +296,31 @@ export class FitterService {
         jobId: string,
         dto: JobStatusDto,
     ) {
-        if (!Types.ObjectId.isValid(jobId)) {
-            throw new BadRequestException('Invalid job ID');
+        try {
+            if (!Types.ObjectId.isValid(jobId)) {
+                throw new BadRequestException('Invalid job ID');
+            }
+
+            const job = await this.jobModel.findOne({
+                _id: new Types.ObjectId(jobId),
+                assignedFitter: fitterId,
+            });
+
+            if (!job) {
+                throw new NotFoundException('Job not found or not assigned to you');
+            }
+
+            job.status = dto.status;
+            job.customerNote = dto.customerNote;
+            await job.save();
+            return {
+                message: 'Job status updated successfully',
+                data: job,
+            };
+        } catch (error) {
+            console.log(error)
         }
 
-        const job = await this.jobModel.findOne({
-            _id: new Types.ObjectId(jobId),
-            assignedFitter: fitterId,
-        });
-
-        if (!job) {
-            throw new NotFoundException('Job not found or not assigned to you');
-        }
-
-        job.status = dto.status;
-        job.customerNote = dto.customerNote;
-        await job.save();
-        return {
-            message: 'Job status updated successfully',
-            data: job,
-        };
     }
 
     async cancelJob(

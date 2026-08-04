@@ -16,7 +16,7 @@ export class MeasurementsService {
   constructor(
     @InjectModel(Job.name)
     private readonly jobModel: Model<JobDocument>,
-  ) {}
+  ) { }
 
   private processMeasurementData(
     dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
@@ -52,14 +52,14 @@ export class MeasurementsService {
         totalOpenings++;
 
         const upperType = (opening.type || '').toUpperCase();
-        if (upperType === 'WINDOW') totalWindows++;
-        if (upperType === 'DOOR') totalDoors++;
+        if (upperType === 'Window') totalWindows++;
+        if (upperType === 'Door') totalDoors++;
 
         const area = (opening.width || 0) * (opening.height || 0);
 
         return {
           ...opening,
-          type: upperType || 'WINDOW',
+          type: upperType || 'Window',
           area,
           images: opening.images || [],
           metadata: opening.metadata || {},
