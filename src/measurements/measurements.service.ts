@@ -6,6 +6,7 @@ import {
   JobDocument,
   JobMeasurements,
   JobStatus,
+  OpeningType,
 } from '../jobs/schemas/job.schema';
 import { CreateMeasurementDto } from './dtos/create-measurement.dto';
 import { UpdateMeasurementDto } from './dtos/update-measurement.dto';
@@ -16,7 +17,7 @@ export class MeasurementsService {
   constructor(
     @InjectModel(Job.name)
     private readonly jobModel: Model<JobDocument>,
-  ) { }
+  ) {}
 
   private processMeasurementData(
     dto: Partial<CreateMeasurementDto | UpdateMeasurementDto>,
@@ -52,14 +53,22 @@ export class MeasurementsService {
         totalOpenings++;
 
         const upperType = (opening.type || '').toUpperCase();
-        if (upperType === 'Window') totalWindows++;
-        if (upperType === 'Door') totalDoors++;
+        let normalizedType: OpeningType = OpeningType.WINDOW;
+        if (upperType === 'DOOR') {
+          normalizedType = OpeningType.DOOR;
+          totalDoors++;
+        } else if (upperType === 'CUSTOM') {
+          normalizedType = OpeningType.CUSTOM;
+        } else {
+          normalizedType = OpeningType.WINDOW;
+          totalWindows++;
+        }
 
         const area = (opening.width || 0) * (opening.height || 0);
 
         return {
           ...opening,
-          type: upperType || 'Window',
+          type: normalizedType,
           area,
           images: opening.images || [],
           metadata: opening.metadata || {},
