@@ -103,6 +103,16 @@ export class CreateJobDto {
   @IsDateString()
   measurementCompletedAt?: string;
 
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  salemanMeasuringCompletedAt?: string;
+
+  @ApiPropertyOptional({ example: '2026-05-20T10:30:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  salemanJobCompletedAt?: string;
+
   @ApiPropertyOptional({ example: 'user_id_of_fitter' })
   @IsOptional()
   @IsString()

@@ -98,12 +98,18 @@ export class MeasurementsService {
       ? { _id: createDto.jobId }
       : { jobId: createDto.jobId };
 
+    const existingJob = await this.jobModel.findOne(filter).exec();
     const updateFields: Record<string, any> = { measurements: summaryData };
     if (
       createDto.status === 'Completed' ||
       summaryData.status === 'Completed'
     ) {
-      updateFields.status = JobStatus.Quoting;
+      updateFields.status = JobStatus.ReadyForFitting;
+      const now = new Date();
+      updateFields.salemanMeasuringCompletedAt =
+        existingJob?.salemanMeasuringCompletedAt || now;
+      updateFields.salemanJobCompletedAt =
+        existingJob?.salemanJobCompletedAt || now;
     }
 
     const updatedJob = await this.jobModel
@@ -126,12 +132,18 @@ export class MeasurementsService {
       ? { $or: [{ _id: id }, { jobId: id }] }
       : { jobId: id };
 
+    const existingJob = await this.jobModel.findOne(filter).exec();
     const updateFields: Record<string, any> = { measurements: summaryData };
     if (
       updateDto.status === 'Completed' ||
       summaryData.status === 'Completed'
     ) {
-      updateFields.status = JobStatus.Quoting;
+      updateFields.status = JobStatus.ReadyForFitting;
+      const now = new Date();
+      updateFields.salemanMeasuringCompletedAt =
+        existingJob?.salemanMeasuringCompletedAt || now;
+      updateFields.salemanJobCompletedAt =
+        existingJob?.salemanJobCompletedAt || now;
     }
 
     const updated = await this.jobModel

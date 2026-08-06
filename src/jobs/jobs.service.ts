@@ -606,6 +606,14 @@ export class JobsService implements OnModuleInit {
       dateUpdates.measurementCompletedAt = new Date(
         safeUpdateDto.measurementCompletedAt,
       );
+    if (safeUpdateDto.salemanMeasuringCompletedAt)
+      dateUpdates.salemanMeasuringCompletedAt = new Date(
+        safeUpdateDto.salemanMeasuringCompletedAt,
+      );
+    if (safeUpdateDto.salemanJobCompletedAt)
+      dateUpdates.salemanJobCompletedAt = new Date(
+        safeUpdateDto.salemanJobCompletedAt,
+      );
 
     const updatePayload = {
       ...safeUpdateDto,
@@ -661,10 +669,15 @@ export class JobsService implements OnModuleInit {
     id: string,
     workflowDto: SalesmanWorkflowDto,
   ): Promise<JobDocument> {
+    const currentJob = await this.findByMongoIdOrJobId(id);
     const now = new Date();
     return this.applySalesmanWorkflow(id, workflowDto, {
-      jobStatus: JobStatus.Quoting,
-      timestamps: { measurementCompletedAt: now },
+      jobStatus: JobStatus.ReadyForFitting,
+      timestamps: {
+        measurementCompletedAt: now,
+        salemanMeasuringCompletedAt: currentJob?.salemanMeasuringCompletedAt || now,
+        salemanJobCompletedAt: currentJob?.salemanJobCompletedAt || now,
+      },
     });
   }
 
