@@ -50,7 +50,6 @@ export class User {
 
   @Prop({
     required: false,
-    unique: true,
     trim: true,
     index: true,
     validate: {
