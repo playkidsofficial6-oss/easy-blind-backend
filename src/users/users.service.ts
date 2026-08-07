@@ -58,7 +58,7 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponse> {
     const normalizedEmail = createUserDto.email.toLowerCase().trim();
@@ -87,6 +87,7 @@ export class UsersService {
       return this.toResponse(createdUser);
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
+        console.log(error)
         throw new ConflictException('A user with this email already exists');
       }
       throw error;
