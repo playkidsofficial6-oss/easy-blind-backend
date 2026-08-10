@@ -136,6 +136,7 @@ export class FitterService {
                             JobStatus.FitterReached,
                             JobStatus.Fitting,
                             JobStatus.TakingPhotos,
+                            JobStatus.FitterCancelled,
                         ],
                     },
                 })) / limit,
@@ -171,6 +172,7 @@ export class FitterService {
                     JobStatus.FitterAssigned,
                     JobStatus.FitterOnTheWay,
                     JobStatus.FitterReached,
+                    JobStatus.FitterCancelled,
                     JobStatus.Fitting,
                     JobStatus.TakingPhotos,
                 ],
@@ -415,7 +417,7 @@ export class FitterService {
             .populate('assignedSalesManager', 'name email role phone checkedIn')
             .populate('assignedSalesman', 'name email role phone checkedIn')
             .populate('assignedFitter', 'name email role phone checkedIn')
-            .sort({ scheduledAt: 1, createdAt: -1 })
+            .sort({ fitterJobCompletedAt: -1 })
             .limit(limit)
             .skip((page - 1) * limit)
             .exec();

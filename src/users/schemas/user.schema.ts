@@ -70,7 +70,7 @@ export class User {
   @Prop({ type: UserLocationSchema })
   location?: UserLocation;
 
-  @Prop({ type: Boolean, default: true, index: true })
+  @Prop({ type: Boolean, default: false, index: true })
   checkedIn?: boolean;
 
   /** Hashed refresh token — never returned in queries by default. */

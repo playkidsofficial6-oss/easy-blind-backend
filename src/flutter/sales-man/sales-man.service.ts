@@ -436,7 +436,7 @@ export class SalesManService {
       .populate('assignedSalesManager', 'name email role phone checkedIn')
       .populate('assignedSalesman', 'name email role phone checkedIn')
       .populate('assignedFitter', 'name email role phone checkedIn')
-      .sort({ scheduledAt: 1, createdAt: -1 })
+      .sort({ salesJobCompletedAt: -1 })
       .limit(limit)
       .skip((page - 1) * limit)
       .exec();
