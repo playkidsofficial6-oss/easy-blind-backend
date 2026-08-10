@@ -18,7 +18,7 @@ export interface SendMailOptions {
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   /**
    * Sends transactional email using ZeptoMail REST API
@@ -97,7 +97,7 @@ export class MailService {
     resetToken: string,
   ): Promise<boolean> {
     const frontendUrl =
-      this.configService.get<string>('CORS_ORIGIN') || 'http://localhost:3000';
+      this.configService.get<string>('CORS_ORIGIN') || 'https://measurepro.co';
     const resetLink = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     const htmlbody = `
