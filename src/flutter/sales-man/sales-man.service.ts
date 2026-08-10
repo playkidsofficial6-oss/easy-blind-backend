@@ -60,7 +60,8 @@ export class SalesManService {
           $in: [
             JobStatus.SalesmanScheduled,
             JobStatus.SalesmanOnTheWay,
-            JobStatus.FitterReached,
+            JobStatus.SalesmanReached,
+            JobStatus.SalesmanCancelled,
             JobStatus.Measuring,
             JobStatus.Quoting,
           ],
@@ -179,9 +180,10 @@ export class SalesManService {
         $in: [
           JobStatus.SalesmanScheduled,
           JobStatus.SalesmanOnTheWay,
-          JobStatus.FitterReached,
+          JobStatus.SalesmanReached,
           JobStatus.Measuring,
           JobStatus.Quoting,
+          JobStatus.SalesmanCancelled,
         ],
       };
     }
