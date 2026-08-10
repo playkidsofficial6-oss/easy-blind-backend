@@ -8,6 +8,7 @@ import { LiveLocationModule } from './live-location/live-location.module';
 import { MeasurementsModule } from './measurements/measurements.module';
 import { validateEnvironment } from './config/env.validation';
 import { FlutterModule } from './flutter/flutter.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FlutterModule } from './flutter/flutter.module';
     MeasurementsModule,
     AuthModule,
     FlutterModule,
+    MailModule,
   ],
 })
 export class AppModule {}

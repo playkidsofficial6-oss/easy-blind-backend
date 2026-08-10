@@ -42,5 +42,9 @@ export function validateEnvironment(env: Environment) {
     JWT_EXPIRES_IN: env.JWT_EXPIRES_IN ?? '15m',
     JWT_REFRESH_SECRET: requireString(env, 'JWT_REFRESH_SECRET'),
     JWT_REFRESH_EXPIRES_IN: env.JWT_REFRESH_EXPIRES_IN ?? '7d',
+    ZEPTOMAIL_URL: env.ZEPTOMAIL_URL ?? 'https://api.zeptomail.in/v1.1/email',
+    ZEPTOMAIL_TOKEN: env.ZEPTOMAIL_TOKEN ?? '',
+    ZEPTOMAIL_FROM_ADDRESS: env.ZEPTOMAIL_FROM_ADDRESS ?? 'noreply@measurepro.co',
+    ZEPTOMAIL_FROM_NAME: env.ZEPTOMAIL_FROM_NAME ?? 'noreply',
   };
 }

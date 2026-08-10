@@ -20,6 +20,7 @@ import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { MailService } from '../mail/mail.service';
 
 export interface UserResponse {
   _id: string;
@@ -29,6 +30,12 @@ export interface UserResponse {
   phoneNumber?: string;
   location?: UserLocation;
   checkedIn?: boolean;
+  activeTaskId?: string;
+  activeTaskStatus?: string;
+  currentTaskAssignedAt?: Date;
+  lastKnownLat?: number;
+  lastKnownLng?: number;
+  lastLocationUpdatedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,6 +65,7 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponse> {
@@ -292,9 +300,16 @@ export class UsersService {
     const user = await this.findByEmail(dto.email);
     if (user) {
       const secret = this.configService.getOrThrow<string>('JWT_SECRET');
-      await this.jwtService.signAsync(
+      const resetToken = await this.jwtService.signAsync(
         { userId: user._id },
         { expiresIn: '1d', secret },
+      );
+
+      // Send real transactional password reset email via ZeptoMail
+      await this.mailService.sendPasswordResetEmail(
+        user.email,
+        user.name,
+        resetToken,
       );
     }
     return {

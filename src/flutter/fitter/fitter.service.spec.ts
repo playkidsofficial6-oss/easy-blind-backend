@@ -115,7 +115,7 @@ describe('FitterService', () => {
 
       expect(job.status).toBe(JobStatus.Fitting);
       expect(job.save).toHaveBeenCalled();
-      expect(res.message).toBe('Job status updated successfully');
+      expect(res?.message).toBe('Job status updated successfully');
     });
   });
 
