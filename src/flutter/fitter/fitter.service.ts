@@ -7,10 +7,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
 import { Job, JobDocument, JobStatus } from '../../jobs/schemas/job.schema';
 import { MyJobsFilterDto } from './dto/my-job-filter.dto';
-import { JobStatusDto } from '../sales-man/dto/job-status-change.dto';
 import { HomeDto } from './dto/home.dto';
 import { CompletedJobsDto } from './dto/completed-jobs.dto';
 import { JobPhotosDto } from './dto/photos.dto';
+import { JobStatusDto } from './dto/job-status-change.dto';
 
 @Injectable()
 export class FitterService {
