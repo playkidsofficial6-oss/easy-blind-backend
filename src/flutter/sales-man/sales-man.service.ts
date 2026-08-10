@@ -61,7 +61,6 @@ export class SalesManService {
             JobStatus.SalesmanScheduled,
             JobStatus.SalesmanOnTheWay,
             JobStatus.SalesmanReached,
-            JobStatus.SalesmanCancelled,
             JobStatus.Measuring,
             JobStatus.Quoting,
           ],
@@ -183,7 +182,6 @@ export class SalesManService {
           JobStatus.SalesmanReached,
           JobStatus.Measuring,
           JobStatus.Quoting,
-          JobStatus.SalesmanCancelled,
         ],
       };
     }
