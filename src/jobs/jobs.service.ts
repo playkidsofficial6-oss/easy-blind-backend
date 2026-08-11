@@ -469,28 +469,57 @@ export class JobsService implements OnModuleInit {
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
     const filter = this.buildFilter(query);
+    const isAll = query.all === true;
 
-    const [items, total] = await Promise.all([
-      this.jobModel
-        .find(filter)
-        .populate('assignedSalesManager', 'name email role phone checkedIn')
-        .populate('assignedSalesman', 'name email role phone checkedIn')
-        .populate('assignedFitter', 'name email role phone checkedIn')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.jobModel.countDocuments(filter).exec(),
-    ]);
+    let itemsQuery = this.jobModel
+      .find(filter)
+      .populate('assignedSalesManager', 'name email role phone checkedIn')
+      .populate('assignedSalesman', 'name email role phone checkedIn')
+      .populate('assignedFitter', 'name email role phone checkedIn')
+      .sort({ createdAt: -1 });
+
+    if (!isAll) {
+      itemsQuery = itemsQuery.skip(skip).limit(limit);
+    }
+
+    const [items, total, overallTotal, overallCompleted, overallReviewed] =
+      await Promise.all([
+        itemsQuery.exec(),
+        this.jobModel.countDocuments(filter).exec(),
+        this.jobModel.countDocuments().exec(),
+        this.jobModel.countDocuments({ status: JobStatus.Completed }).exec(),
+        this.jobModel.countDocuments({ isReviewed: true }).exec(),
+      ]);
 
     return {
       items,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
+        page: isAll ? 1 : page,
+        limit: isAll ? total : limit,
+        totalPages: isAll ? 1 : Math.ceil(total / limit) || 1,
       },
+      stats: {
+        total: overallTotal,
+        completed: overallCompleted,
+        reviewed: overallReviewed,
+        pendingReview: overallTotal - overallReviewed,
+      },
+    };
+  }
+
+  async getStats() {
+    const [total, completed, reviewed] = await Promise.all([
+      this.jobModel.countDocuments().exec(),
+      this.jobModel.countDocuments({ status: JobStatus.Completed }).exec(),
+      this.jobModel.countDocuments({ isReviewed: true }).exec(),
+    ]);
+
+    return {
+      total,
+      completed,
+      reviewed,
+      pendingReview: total - reviewed,
     };
   }
 
@@ -850,6 +879,13 @@ export class JobsService implements OnModuleInit {
 
     if (query.status) filter.status = query.status;
     if (query.priority) filter.priority = query.priority;
+    if (typeof query.isReviewed === 'boolean') {
+      if (query.isReviewed) {
+        filter.isReviewed = true;
+      } else {
+        filter.$or = [{ isReviewed: false }, { isReviewed: { $exists: false } }];
+      }
+    }
     if (query.search) {
       const searchText = query.search.trim();
       const search = new RegExp(searchText, 'i');

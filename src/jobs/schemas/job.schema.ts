@@ -254,6 +254,15 @@ export class Job {
   @Prop({ required: true, enum: JobStatus, default: JobStatus.Pending })
   status: JobStatus;
 
+  @Prop({ type: Boolean, default: false })
+  isReviewed?: boolean;
+
+  @Prop({ type: Number, min: 1, max: 5, required: false })
+  reviewRating?: number;
+
+  @Prop({ type: String, trim: true, required: false })
+  reviewMessage?: string;
+
   @Prop({ required: true, enum: JobPriority, default: JobPriority.Medium })
   priority: JobPriority;
 

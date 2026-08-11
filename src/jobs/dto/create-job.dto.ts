@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -7,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -71,6 +73,23 @@ export class CreateJobDto {
   @IsOptional()
   @IsEnum(JobStatus)
   status?: JobStatus;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isReviewed?: boolean;
+
+  @ApiPropertyOptional({ example: 5, minimum: 1, maximum: 5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  reviewRating?: number;
+
+  @ApiPropertyOptional({ example: 'Great installation service, very professional!' })
+  @IsOptional()
+  @IsString()
+  reviewMessage?: string;
 
   @ApiPropertyOptional({ enum: JobPriority, default: JobPriority.Medium })
   @IsOptional()

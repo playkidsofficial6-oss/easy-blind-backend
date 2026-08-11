@@ -50,6 +50,13 @@ export class JobsController {
     return this.jobsService.findAll(query);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Get aggregate job statistics (total, completed, reviewed, pending)' })
+  @ApiOkResponse({ description: 'Job stats returned successfully.' })
+  getStats() {
+    return this.jobsService.getStats();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Read a single job by MongoDB id' })
   @ApiOkResponse({ description: 'Job returned successfully.' })
