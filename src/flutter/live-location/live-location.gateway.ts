@@ -29,6 +29,7 @@ interface AuthenticatedSocket extends Socket {
     origin: '*',
     credentials: true,
   },
+  transports: ['polling', 'websocket'],
 })
 export class LiveLocationGateway implements OnGatewayConnection {
   @WebSocketServer()
