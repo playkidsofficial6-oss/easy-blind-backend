@@ -5,7 +5,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 import type { SignOptions } from 'jsonwebtoken';
 import { UsersModule } from '../users/users.module';
 import { LiveLocationController } from './live-location.controller';
-import { LiveLocationGateway } from './live-location.gateway';
 import { LiveLocationService } from './live-location.service';
 import { User, UserSchema } from '../users/schemas/user.schema';
 
@@ -28,7 +27,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
     }),
   ],
   controllers: [LiveLocationController],
-  providers: [LiveLocationService, LiveLocationGateway],
-  exports: [LiveLocationService, LiveLocationGateway],
+  providers: [LiveLocationService],
+  exports: [LiveLocationService],
 })
 export class LiveLocationModule {}

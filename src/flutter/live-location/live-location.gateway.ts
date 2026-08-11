@@ -77,7 +77,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       }
     }
 
-    return this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    const res = await this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    if (res?.data) {
+      this.server.emit('location:updated', res.data);
+    }
+    return res;
   }
 
   @SubscribeMessage('track-live-location')
@@ -99,7 +103,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       }
     }
 
-    return this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    const res = await this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    if (res?.data) {
+      this.server.emit('location:updated', res.data);
+    }
+    return res;
   }
 
   private async authenticateSocket(client: Socket): Promise<AuthUser> {

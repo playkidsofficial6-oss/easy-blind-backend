@@ -16,7 +16,6 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { Job, JobDocument, JobStatus } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
-import { LiveLocationGateway } from '../live-location/live-location.gateway';
 import { LiveLocationService } from '../live-location/live-location.service';
 
 const JOB_ID_PREFIX = 'JOB';
@@ -28,8 +27,6 @@ export class JobsService implements OnModuleInit {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    @Inject(forwardRef(() => LiveLocationGateway))
-    private readonly liveLocationGateway: LiveLocationGateway,
     @Inject(forwardRef(() => LiveLocationService))
     private readonly liveLocationService: LiveLocationService,
   ) {}
@@ -390,44 +387,7 @@ export class JobsService implements OnModuleInit {
     job: JobDocument,
     oldSalesmanUserId?: string,
   ) {
-    try {
-      const assignedSalesman = job.assignedSalesman;
-      if (assignedSalesman) {
-        const user = await this.findUserByAssignment(assignedSalesman);
-        if (user) {
-          this.liveLocationGateway.server
-            .to(`user:${String(user._id)}`)
-            .emit('job:assigned', job.toJSON());
-          console.log(
-            `[Socket] Emitted job:assigned to user:${String(user._id)} for job ${job.jobId}`,
-          );
-        }
-      }
-
-      if (oldSalesmanUserId) {
-        const currentSalesmanUser = assignedSalesman
-          ? await this.findUserByAssignment(assignedSalesman)
-          : null;
-        if (
-          !currentSalesmanUser ||
-          currentSalesmanUser._id.toString() !== oldSalesmanUserId
-        ) {
-          const unassignedJobCopy: Record<string, any> = job.toJSON();
-          unassignedJobCopy.assignedSalesman = null;
-          this.liveLocationGateway.server
-            .to(`user:${oldSalesmanUserId}`)
-            .emit('job:assigned', unassignedJobCopy);
-          console.log(
-            `[Socket] Emitted job:assigned unassignment to user:${oldSalesmanUserId} for job ${job.jobId}`,
-          );
-        }
-      }
-    } catch (err) {
-      console.error(
-        '[Socket] Failed to emit job assignment notification:',
-        err,
-      );
-    }
+    // WebSockets removed from salesman/manager dashboard
   }
 
   async create(
@@ -846,18 +806,6 @@ export class JobsService implements OnModuleInit {
         .exec();
 
       await this.liveLocationService.updateLiveStatus(salesmanId);
-
-      try {
-        this.liveLocationGateway.server
-          .to('live-location:managers')
-          .emit('salesman:status-changed', {
-            userId: salesmanId,
-            role: 'Salesman',
-            jobId: id,
-          });
-      } catch (err) {
-        console.error('[Socket] Failed to emit salesman:status-changed:', err);
-      }
     }
 
     return updatedJob;
