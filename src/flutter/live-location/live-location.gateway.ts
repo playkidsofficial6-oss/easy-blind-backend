@@ -148,6 +148,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       return authorization.slice(7).trim();
     }
 
+    const queryToken = client.handshake.query?.token;
+    if (typeof queryToken === 'string' && queryToken.trim()) {
+      return queryToken.replace(/^Bearer\s+/i, '').trim();
+    }
+
     return null;
   }
 }
