@@ -346,8 +346,10 @@ export class Job {
   fitterJobStartedAt?: Date
 
   @Prop({ type: Date })
-  fitterJobCompletedAt?: Date
+  fitterJobCompletedAt?: Date;
 
+  @Prop({ type: Boolean, default: false, index: true })
+  isDeleted?: boolean;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);

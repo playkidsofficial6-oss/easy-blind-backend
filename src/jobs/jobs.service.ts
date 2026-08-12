@@ -486,9 +486,16 @@ export class JobsService implements OnModuleInit {
       await Promise.all([
         itemsQuery.exec(),
         this.jobModel.countDocuments(filter).exec(),
-        this.jobModel.countDocuments().exec(),
-        this.jobModel.countDocuments({ status: JobStatus.Completed }).exec(),
-        this.jobModel.countDocuments({ isReviewed: true }).exec(),
+        this.jobModel.countDocuments({ isDeleted: { $ne: true } }).exec(),
+        this.jobModel
+          .countDocuments({
+            status: JobStatus.Completed,
+            isDeleted: { $ne: true },
+          })
+          .exec(),
+        this.jobModel
+          .countDocuments({ isReviewed: true, isDeleted: { $ne: true } })
+          .exec(),
       ]);
 
     return {
@@ -510,9 +517,16 @@ export class JobsService implements OnModuleInit {
 
   async getStats() {
     const [total, completed, reviewed] = await Promise.all([
-      this.jobModel.countDocuments().exec(),
-      this.jobModel.countDocuments({ status: JobStatus.Completed }).exec(),
-      this.jobModel.countDocuments({ isReviewed: true }).exec(),
+      this.jobModel.countDocuments({ isDeleted: { $ne: true } }).exec(),
+      this.jobModel
+        .countDocuments({
+          status: JobStatus.Completed,
+          isDeleted: { $ne: true },
+        })
+        .exec(),
+      this.jobModel
+        .countDocuments({ isReviewed: true, isDeleted: { $ne: true } })
+        .exec(),
     ]);
 
     return {
@@ -842,7 +856,11 @@ export class JobsService implements OnModuleInit {
 
   async remove(id: string) {
     const deletedJob = await this.jobModel
-      .findOneAndDelete(this.getIdentifierFilter(id))
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        { $set: { isDeleted: true } },
+        { new: true },
+      )
       .exec();
     if (!deletedJob) {
       throw new NotFoundException(`Job with id ${id} was not found`);
@@ -865,17 +883,24 @@ export class JobsService implements OnModuleInit {
   }
 
   private getIdentifierFilter(id: string): Record<string, unknown> {
+    const notDeleted = { isDeleted: { $ne: true } };
+
     if (isValidObjectId(id)) {
-      return { _id: id };
+      return { _id: id, ...notDeleted };
     }
 
     return {
-      $or: [{ jobId: id }, { jobId: id.toUpperCase() }, { _id: id }],
+      $and: [
+        { $or: [{ jobId: id }, { jobId: id.toUpperCase() }, { _id: id }] },
+        notDeleted,
+      ],
     };
   }
 
   private buildFilter(query: QueryJobsDto): Record<string, unknown> {
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = {
+      isDeleted: { $ne: true },
+    };
 
     if (query.status) filter.status = query.status;
     if (query.priority) filter.priority = query.priority;

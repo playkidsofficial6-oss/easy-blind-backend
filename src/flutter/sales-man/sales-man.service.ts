@@ -25,6 +25,7 @@ export class SalesManService {
     const limit = dto?.limit ?? 10;
     const salesmanFilter = {
       assignedSalesman: assignedSalesman,
+      isDeleted: { $ne: true },
     };
 
     const now = new Date();
