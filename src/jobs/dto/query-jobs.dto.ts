@@ -45,4 +45,14 @@ export class QueryJobsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ example: '2026-08-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-08-31T23:59:59.999Z' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
 }

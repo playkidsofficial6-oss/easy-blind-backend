@@ -123,7 +123,10 @@ export class AuthService {
 
   async logout(userId: string): Promise<{ message: string }> {
     await this.userModel
-      .findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } })
+      .findByIdAndUpdate(userId, {
+        checkedIn: false,
+        $unset: { refreshToken: 1 },
+      })
       .exec();
     return { message: 'Logged out successfully' };
   }

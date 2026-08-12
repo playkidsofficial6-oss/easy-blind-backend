@@ -900,6 +900,13 @@ export class JobsService implements OnModuleInit {
       ];
     }
 
+    if (query.startDate || query.endDate) {
+      const dateRangeFilter: Record<string, Date> = {};
+      if (query.startDate) dateRangeFilter.$gte = new Date(query.startDate);
+      if (query.endDate) dateRangeFilter.$lte = new Date(query.endDate);
+      filter.scheduledAt = dateRangeFilter;
+    }
+
     return filter;
   }
 }
