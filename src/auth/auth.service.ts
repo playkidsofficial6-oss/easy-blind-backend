@@ -94,7 +94,7 @@ export class AuthService {
       .select('+refreshToken')
       .exec();
 
-    if (!user || !user.refreshToken) {
+    if (!user || !user.refreshToken || user.isDeleted) {
       throw new ForbiddenException('Access denied');
     }
 
