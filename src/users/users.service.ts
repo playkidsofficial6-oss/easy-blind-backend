@@ -187,8 +187,9 @@ export class UsersService {
       updatePayload.email = normalizedEmail;
     }
 
-    if (updateUserDto.phoneNumber !== undefined) {
-      updatePayload.phoneNumber = updateUserDto.phoneNumber.trim();
+    const rawPhone = updateUserDto.phoneNumber;
+    if (rawPhone !== undefined) {
+      updatePayload.phoneNumber = String(rawPhone).trim();
     }
 
     if (updateUserDto.password !== undefined) {
