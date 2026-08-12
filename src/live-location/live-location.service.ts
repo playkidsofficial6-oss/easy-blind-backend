@@ -66,7 +66,7 @@ export class LiveLocationService {
     };
 
     const updatedUser = await this.userModel
-      .findByIdAndUpdate(authUser.userId, { $set: payload }, { new: true })
+      .findByIdAndUpdate(authUser.userId, { $set: payload }, { returnDocument: 'after' })
       .exec();
 
     if (!updatedUser) {
@@ -99,7 +99,7 @@ export class LiveLocationService {
             checkedIn: isOnline,
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 

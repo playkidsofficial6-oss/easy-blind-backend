@@ -859,7 +859,7 @@ export class JobsService implements OnModuleInit {
       .findOneAndUpdate(
         this.getIdentifierFilter(id),
         { $set: { isDeleted: true } },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!deletedJob) {

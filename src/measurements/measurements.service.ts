@@ -113,7 +113,7 @@ export class MeasurementsService {
     }
 
     const updatedJob = await this.jobModel
-      .findOneAndUpdate(filter, { $set: updateFields }, { new: true })
+      .findOneAndUpdate(filter, { $set: updateFields }, { returnDocument: 'after' })
       .exec();
 
     if (!updatedJob) {
@@ -147,7 +147,7 @@ export class MeasurementsService {
     }
 
     const updated = await this.jobModel
-      .findOneAndUpdate(filter, { $set: updateFields }, { new: true })
+      .findOneAndUpdate(filter, { $set: updateFields }, { returnDocument: 'after' })
       .exec();
 
     if (!updated || !updated.measurements) {

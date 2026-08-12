@@ -31,7 +31,7 @@ export class LiveLocationService {
                 updatedAt: new Date(),
             },
             {
-                new: true,
+                returnDocument: 'after',
                 runValidators: true,
             }
         );

@@ -226,7 +226,7 @@ export class UsersService {
     try {
       const updatedUser = await this.userModel
         .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updatePayload, {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
         })
         .exec();
@@ -252,7 +252,7 @@ export class UsersService {
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
       { $set: { checkedIn: true } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!user) {
       throw new NotFoundException('User not found');
@@ -271,7 +271,7 @@ export class UsersService {
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
       { $set: { checkedIn: false } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!user) {
       throw new NotFoundException('User not found');
@@ -298,7 +298,7 @@ export class UsersService {
           $set: { isDeleted: true, checkedIn: false },
           $unset: { refreshToken: 1 },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 

@@ -85,7 +85,7 @@ describe('UsersService', () => {
         $set: { isDeleted: true, checkedIn: false },
         $unset: { refreshToken: 1 },
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     expect(result).toEqual({ message: 'User deleted successfully' });
   });
