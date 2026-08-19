@@ -537,6 +537,72 @@ export class JobsService implements OnModuleInit {
     };
   }
 
+  async getStaffRequestsUnreadCount(userId?: string) {
+    let lastSeen: Date | undefined;
+    if (userId && isValidObjectId(userId)) {
+      const user = await this.userModel
+        .findById(userId)
+        .select('lastSeenStaffRequestsAt')
+        .exec();
+      if (user?.lastSeenStaffRequestsAt) {
+        lastSeen = new Date(user.lastSeenStaffRequestsAt);
+      }
+    }
+
+    const basePendingFilter: Record<string, any> = {
+      isDeleted: { $ne: true },
+      'rescheduleRequest.status': 'pending',
+    };
+
+    const totalPending = await this.jobModel
+      .countDocuments(basePendingFilter)
+      .exec();
+
+    if (!lastSeen) {
+      return {
+        unreadCount: totalPending,
+        totalPending,
+        lastSeenAt: null,
+      };
+    }
+
+    const unreadFilter: Record<string, any> = {
+      ...basePendingFilter,
+      $or: [
+        { 'rescheduleRequest.requestedAt': { $gt: lastSeen } },
+        {
+          'rescheduleRequest.requestedAt': { $exists: false },
+          createdAt: { $gt: lastSeen },
+        },
+      ],
+    };
+
+    const unreadCount = await this.jobModel
+      .countDocuments(unreadFilter)
+      .exec();
+
+    return {
+      unreadCount,
+      totalPending,
+      lastSeenAt: lastSeen.toISOString(),
+    };
+  }
+
+  async markStaffRequestsSeen(userId?: string) {
+    const now = new Date();
+    if (userId && isValidObjectId(userId)) {
+      await this.userModel
+        .findByIdAndUpdate(userId, {
+          $set: { lastSeenStaffRequestsAt: now },
+        })
+        .exec();
+    }
+    return {
+      success: true,
+      lastSeenAt: now.toISOString(),
+    };
+  }
+
   async findOne(id: string): Promise<JobDocument> {
     const job = await this.findByMongoIdOrJobId(id);
     if (!job) {
@@ -617,6 +683,15 @@ export class JobsService implements OnModuleInit {
       dateUpdates.salemanJobCompletedAt = new Date(
         safeUpdateDto.salemanJobCompletedAt,
       );
+
+    if (safeUpdateDto.rescheduleRequest) {
+      safeUpdateDto.rescheduleRequest = {
+        status: safeUpdateDto.rescheduleRequest.status,
+        requestedAt: safeUpdateDto.rescheduleRequest.requestedAt
+          ? new Date(safeUpdateDto.rescheduleRequest.requestedAt) as any
+          : new Date(),
+      };
+    }
 
     const updatePayload = {
       ...safeUpdateDto,

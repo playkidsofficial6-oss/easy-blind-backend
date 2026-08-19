@@ -57,6 +57,21 @@ export class JobsController {
     return this.jobsService.getStats();
   }
 
+  @Get('staff-requests/unread-count')
+  @ApiOperation({ summary: 'Get unread/unseen staff requests count for current user' })
+  @ApiOkResponse({ description: 'Staff request unread count returned successfully.' })
+  getStaffRequestsUnreadCount(@Req() req: any) {
+    return this.jobsService.getStaffRequestsUnreadCount(req?.user?.userId);
+  }
+
+  @Post('staff-requests/mark-seen')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark staff requests as seen for current user' })
+  @ApiOkResponse({ description: 'Staff requests marked as seen successfully.' })
+  markStaffRequestsSeen(@Req() req: any) {
+    return this.jobsService.markStaffRequestsSeen(req?.user?.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Read a single job by MongoDB id' })
   @ApiOkResponse({ description: 'Job returned successfully.' })

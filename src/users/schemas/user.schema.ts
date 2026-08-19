@@ -79,6 +79,9 @@ export class User {
 
   @Prop({ type: Boolean, default: false, index: true })
   isDeleted?: boolean;
+
+  @Prop({ type: Date })
+  lastSeenStaffRequestsAt?: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;
