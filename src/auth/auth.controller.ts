@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from './interfaces/jwt-user.interface';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
 
 interface AuthenticatedRequest {
   user: JwtAuthenticatedUser;
@@ -83,5 +85,17 @@ export class AuthController {
   @ApiOkResponse({ description: 'Profile returned successfully.' })
   profile(@Req() req: AuthenticatedRequest) {
     return this.usersService.findById(req.user.userId);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update the authenticated user profile' })
+  @ApiOkResponse({ description: 'Profile updated successfully.' })
+  updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(req.user.userId, updateUserDto);
   }
 }

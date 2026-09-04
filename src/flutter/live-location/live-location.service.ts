@@ -21,7 +21,7 @@ export class LiveLocationService {
         const latitude = Number(payloadDto?.latitude);
         const longitude = Number(payloadDto?.longitude);
 
-        await this.userModel.findByIdAndUpdate(
+        const updatedUser = await this.userModel.findByIdAndUpdate(
             AuthUser.userId,
             {
                 location: {
@@ -31,14 +31,31 @@ export class LiveLocationService {
                 updatedAt: new Date(),
             },
             {
-                new: true,
+                returnDocument: 'after',
                 runValidators: true,
             }
         );
 
+        const userIdStr = updatedUser?._id?.toString() || AuthUser.userId;
+        const locationRecord = {
+            userId: userIdStr,
+            _id: userIdStr,
+            role: updatedUser?.role || AuthUser.role,
+            location: updatedUser?.location || {
+                type: 'Point',
+                coordinates: [longitude, latitude],
+            },
+            lat: latitude,
+            lng: longitude,
+            latitude,
+            longitude,
+            updatedAt: (updatedUser as any)?.updatedAt || new Date(),
+            createdAt: (updatedUser as any)?.createdAt,
+        };
+
         return {
             message: "location tracked successfully",
-            data: null
+            data: locationRecord
         };
     }
 }

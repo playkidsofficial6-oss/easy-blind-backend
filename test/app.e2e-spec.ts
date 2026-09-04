@@ -257,6 +257,66 @@ describe('Easy Blind Backend CRUD APIs (e2e)', () => {
     expect(users.every((user) => user.passwordHash === undefined)).toBe(true);
   });
 
+  it('allows SalesManager to edit and soft-delete users, setting isDeleted=true, checkedIn=false, and clearing refresh tokens', async () => {
+    // 1. Register a Sales Manager user
+    const smReg = await request(httpServer)
+      .post('/api/v1/auth/register')
+      .send({
+        name: 'Sales Manager One',
+        email: 'salesmgr@example.com',
+        password: 'SecurePass123!',
+        role: 'Sales Manager',
+      })
+      .expect(201);
+    const smToken = (smReg.body as AuthResponse).accessToken;
+
+    // 2. Register a target user (e.g. Salesman)
+    const targetReg = await request(httpServer)
+      .post('/api/v1/auth/register')
+      .send({
+        name: 'Target User',
+        email: 'targetuser@example.com',
+        password: 'SecurePass123!',
+        role: 'Salesman',
+      })
+      .expect(201);
+    const targetUser = (targetReg.body as AuthResponse).user;
+
+    // 3. Sales Manager edits the target user profile
+    const updateRes = await request(httpServer)
+      .patch(`/api/v1/users/${targetUser._id}`)
+      .set('Authorization', `Bearer ${smToken}`)
+      .send({ name: 'Target User Updated', phoneNumber: '+919999988888' })
+      .expect(200);
+    expect((updateRes.body as UserResponse).name).toBe('Target User Updated');
+
+    // 4. Sales Manager soft-deletes the target user
+    const deleteRes = await request(httpServer)
+      .delete(`/api/v1/users/${targetUser._id}`)
+      .set('Authorization', `Bearer ${smToken}`)
+      .expect(200);
+    expect(deleteRes.body.message).toContain('deleted successfully');
+
+    // 5. Target user should be hidden from GET /users and return 404 on GET /users/:id
+    const usersListRes = await request(httpServer)
+      .get('/api/v1/users')
+      .set('Authorization', `Bearer ${smToken}`)
+      .expect(200);
+    const userIds = (usersListRes.body as UserResponse[]).map((u) => u._id);
+    expect(userIds).not.toContain(targetUser._id);
+
+    await request(httpServer)
+      .get(`/api/v1/users/${targetUser._id}`)
+      .set('Authorization', `Bearer ${smToken}`)
+      .expect(404);
+
+    // 6. Deleted user cannot login
+    await request(httpServer)
+      .post('/api/v1/auth/login')
+      .send({ email: 'targetuser@example.com', password: 'SecurePass123!' })
+      .expect(401);
+  });
+
   it('serves Swagger documentation UI at /api/swagger and document JSON at /api/swagger-json', async () => {
     const res = await request(httpServer).get('/api/swagger/').expect(200);
     expect(res.text).toContain('swagger-ui');

@@ -4,11 +4,11 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class JobStatusDto {
   @ApiProperty({
-    enum: [JobStatus.SalesmanOnTheWay, JobStatus.SalesmanReached, JobStatus.SalesmanCancelled, JobStatus.Measuring, JobStatus.Quoting, JobStatus.ReadyForFitting],
+    enum: JobStatus,
     description: 'New status for the job',
     example: JobStatus.SalesmanOnTheWay,
   })
-  @IsEnum([JobStatus.SalesmanOnTheWay, JobStatus.SalesmanReached, JobStatus.SalesmanCancelled, JobStatus.Measuring, JobStatus.Quoting, JobStatus.ReadyForFitting])
+  @IsEnum(JobStatus)
   status: JobStatus;
 
   @ApiProperty({

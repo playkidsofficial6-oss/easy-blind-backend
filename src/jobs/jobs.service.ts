@@ -16,7 +16,6 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { Job, JobDocument, JobStatus } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
-import { LiveLocationGateway } from '../live-location/live-location.gateway';
 import { LiveLocationService } from '../live-location/live-location.service';
 
 const JOB_ID_PREFIX = 'JOB';
@@ -28,8 +27,6 @@ export class JobsService implements OnModuleInit {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    @Inject(forwardRef(() => LiveLocationGateway))
-    private readonly liveLocationGateway: LiveLocationGateway,
     @Inject(forwardRef(() => LiveLocationService))
     private readonly liveLocationService: LiveLocationService,
   ) {}
@@ -390,44 +387,7 @@ export class JobsService implements OnModuleInit {
     job: JobDocument,
     oldSalesmanUserId?: string,
   ) {
-    try {
-      const assignedSalesman = job.assignedSalesman;
-      if (assignedSalesman) {
-        const user = await this.findUserByAssignment(assignedSalesman);
-        if (user) {
-          this.liveLocationGateway.server
-            .to(`user:${String(user._id)}`)
-            .emit('job:assigned', job.toJSON());
-          console.log(
-            `[Socket] Emitted job:assigned to user:${String(user._id)} for job ${job.jobId}`,
-          );
-        }
-      }
-
-      if (oldSalesmanUserId) {
-        const currentSalesmanUser = assignedSalesman
-          ? await this.findUserByAssignment(assignedSalesman)
-          : null;
-        if (
-          !currentSalesmanUser ||
-          currentSalesmanUser._id.toString() !== oldSalesmanUserId
-        ) {
-          const unassignedJobCopy: Record<string, any> = job.toJSON();
-          unassignedJobCopy.assignedSalesman = null;
-          this.liveLocationGateway.server
-            .to(`user:${oldSalesmanUserId}`)
-            .emit('job:assigned', unassignedJobCopy);
-          console.log(
-            `[Socket] Emitted job:assigned unassignment to user:${oldSalesmanUserId} for job ${job.jobId}`,
-          );
-        }
-      }
-    } catch (err) {
-      console.error(
-        '[Socket] Failed to emit job assignment notification:',
-        err,
-      );
-    }
+    // WebSockets removed from salesman/manager dashboard
   }
 
   async create(
@@ -509,28 +469,137 @@ export class JobsService implements OnModuleInit {
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
     const filter = this.buildFilter(query);
+    const isAll = query.all === true;
 
-    const [items, total] = await Promise.all([
-      this.jobModel
-        .find(filter)
-        .populate('assignedSalesManager', 'name email role phone checkedIn')
-        .populate('assignedSalesman', 'name email role phone checkedIn')
-        .populate('assignedFitter', 'name email role phone checkedIn')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.jobModel.countDocuments(filter).exec(),
-    ]);
+    let itemsQuery = this.jobModel
+      .find(filter)
+      .populate('assignedSalesManager', 'name email role phone checkedIn')
+      .populate('assignedSalesman', 'name email role phone checkedIn')
+      .populate('assignedFitter', 'name email role phone checkedIn')
+      .sort({ createdAt: -1 });
+
+    if (!isAll) {
+      itemsQuery = itemsQuery.skip(skip).limit(limit);
+    }
+
+    const [items, total, overallTotal, overallCompleted, overallReviewed] =
+      await Promise.all([
+        itemsQuery.exec(),
+        this.jobModel.countDocuments(filter).exec(),
+        this.jobModel.countDocuments({ isDeleted: { $ne: true } }).exec(),
+        this.jobModel
+          .countDocuments({
+            status: JobStatus.Completed,
+            isDeleted: { $ne: true },
+          })
+          .exec(),
+        this.jobModel
+          .countDocuments({ isReviewed: true, isDeleted: { $ne: true } })
+          .exec(),
+      ]);
 
     return {
       items,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
+        page: isAll ? 1 : page,
+        limit: isAll ? total : limit,
+        totalPages: isAll ? 1 : Math.ceil(total / limit) || 1,
       },
+      stats: {
+        total: overallTotal,
+        completed: overallCompleted,
+        reviewed: overallReviewed,
+        pendingReview: overallTotal - overallReviewed,
+      },
+    };
+  }
+
+  async getStats() {
+    const [total, completed, reviewed] = await Promise.all([
+      this.jobModel.countDocuments({ isDeleted: { $ne: true } }).exec(),
+      this.jobModel
+        .countDocuments({
+          status: JobStatus.Completed,
+          isDeleted: { $ne: true },
+        })
+        .exec(),
+      this.jobModel
+        .countDocuments({ isReviewed: true, isDeleted: { $ne: true } })
+        .exec(),
+    ]);
+
+    return {
+      total,
+      completed,
+      reviewed,
+      pendingReview: total - reviewed,
+    };
+  }
+
+  async getStaffRequestsUnreadCount(userId?: string) {
+    let lastSeen: Date | undefined;
+    if (userId && isValidObjectId(userId)) {
+      const user = await this.userModel
+        .findById(userId)
+        .select('lastSeenStaffRequestsAt')
+        .exec();
+      if (user?.lastSeenStaffRequestsAt) {
+        lastSeen = new Date(user.lastSeenStaffRequestsAt);
+      }
+    }
+
+    const basePendingFilter: Record<string, any> = {
+      isDeleted: { $ne: true },
+      'rescheduleRequest.status': 'pending',
+    };
+
+    const totalPending = await this.jobModel
+      .countDocuments(basePendingFilter)
+      .exec();
+
+    if (!lastSeen) {
+      return {
+        unreadCount: totalPending,
+        totalPending,
+        lastSeenAt: null,
+      };
+    }
+
+    const unreadFilter: Record<string, any> = {
+      ...basePendingFilter,
+      $or: [
+        { 'rescheduleRequest.requestedAt': { $gt: lastSeen } },
+        {
+          'rescheduleRequest.requestedAt': { $exists: false },
+          createdAt: { $gt: lastSeen },
+        },
+      ],
+    };
+
+    const unreadCount = await this.jobModel
+      .countDocuments(unreadFilter)
+      .exec();
+
+    return {
+      unreadCount,
+      totalPending,
+      lastSeenAt: lastSeen.toISOString(),
+    };
+  }
+
+  async markStaffRequestsSeen(userId?: string) {
+    const now = new Date();
+    if (userId && isValidObjectId(userId)) {
+      await this.userModel
+        .findByIdAndUpdate(userId, {
+          $set: { lastSeenStaffRequestsAt: now },
+        })
+        .exec();
+    }
+    return {
+      success: true,
+      lastSeenAt: now.toISOString(),
     };
   }
 
@@ -614,6 +683,15 @@ export class JobsService implements OnModuleInit {
       dateUpdates.salemanJobCompletedAt = new Date(
         safeUpdateDto.salemanJobCompletedAt,
       );
+
+    if (safeUpdateDto.rescheduleRequest) {
+      safeUpdateDto.rescheduleRequest = {
+        status: safeUpdateDto.rescheduleRequest.status,
+        requestedAt: safeUpdateDto.rescheduleRequest.requestedAt
+          ? new Date(safeUpdateDto.rescheduleRequest.requestedAt) as any
+          : new Date(),
+      };
+    }
 
     const updatePayload = {
       ...safeUpdateDto,
@@ -846,18 +924,6 @@ export class JobsService implements OnModuleInit {
         .exec();
 
       await this.liveLocationService.updateLiveStatus(salesmanId);
-
-      try {
-        this.liveLocationGateway.server
-          .to('live-location:managers')
-          .emit('salesman:status-changed', {
-            userId: salesmanId,
-            role: 'Salesman',
-            jobId: id,
-          });
-      } catch (err) {
-        console.error('[Socket] Failed to emit salesman:status-changed:', err);
-      }
     }
 
     return updatedJob;
@@ -865,7 +931,11 @@ export class JobsService implements OnModuleInit {
 
   async remove(id: string) {
     const deletedJob = await this.jobModel
-      .findOneAndDelete(this.getIdentifierFilter(id))
+      .findOneAndUpdate(
+        this.getIdentifierFilter(id),
+        { $set: { isDeleted: true } },
+        { returnDocument: 'after' },
+      )
       .exec();
     if (!deletedJob) {
       throw new NotFoundException(`Job with id ${id} was not found`);
@@ -888,20 +958,34 @@ export class JobsService implements OnModuleInit {
   }
 
   private getIdentifierFilter(id: string): Record<string, unknown> {
+    const notDeleted = { isDeleted: { $ne: true } };
+
     if (isValidObjectId(id)) {
-      return { _id: id };
+      return { _id: id, ...notDeleted };
     }
 
     return {
-      $or: [{ jobId: id }, { jobId: id.toUpperCase() }, { _id: id }],
+      $and: [
+        { $or: [{ jobId: id }, { jobId: id.toUpperCase() }, { _id: id }] },
+        notDeleted,
+      ],
     };
   }
 
   private buildFilter(query: QueryJobsDto): Record<string, unknown> {
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = {
+      isDeleted: { $ne: true },
+    };
 
     if (query.status) filter.status = query.status;
     if (query.priority) filter.priority = query.priority;
+    if (typeof query.isReviewed === 'boolean') {
+      if (query.isReviewed) {
+        filter.isReviewed = true;
+      } else {
+        filter.$or = [{ isReviewed: false }, { isReviewed: { $exists: false } }];
+      }
+    }
     if (query.search) {
       const searchText = query.search.trim();
       const search = new RegExp(searchText, 'i');
@@ -914,6 +998,13 @@ export class JobsService implements OnModuleInit {
         { address: search },
         { productType: search },
       ];
+    }
+
+    if (query.startDate || query.endDate) {
+      const dateRangeFilter: Record<string, Date> = {};
+      if (query.startDate) dateRangeFilter.$gte = new Date(query.startDate);
+      if (query.endDate) dateRangeFilter.$lte = new Date(query.endDate);
+      filter.scheduledAt = dateRangeFilter;
     }
 
     return filter;

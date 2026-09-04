@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -26,6 +28,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthUser } from '../helpers/AuthUser.type';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from './schemas/user.schema';
 
 @ApiTags('users')
 @Controller('users')
@@ -99,8 +104,33 @@ export class UsersController {
   update(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @Request() { user }: { user: AuthUser },
   ) {
+    const allowedRoles = [
+      UserRole.SalesManager,
+      UserRole.Admin,
+      UserRole.Owner,
+    ];
+    const isSelf = user.userId.toString() === id;
+    const isAuthorizedRole = allowedRoles.includes(user.role);
+
+    if (!isSelf && !isAuthorizedRole) {
+      throw new ForbiddenException(
+        'Access denied. Insufficient permissions to edit this user.',
+      );
+    }
+
     return this.usersService.update(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SalesManager, UserRole.Admin, UserRole.Owner)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Soft delete a user by id' })
+  @ApiOkResponse({ description: 'User deleted successfully.' })
+  remove(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.usersService.softDelete(id);
   }
 
   @Post('checkin')

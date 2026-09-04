@@ -29,6 +29,7 @@ interface AuthenticatedSocket extends Socket {
     origin: '*',
     credentials: true,
   },
+  transports: ['websocket', 'polling'],
 })
 export class LiveLocationGateway implements OnGatewayConnection {
   @WebSocketServer()
@@ -77,7 +78,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       }
     }
 
-    return this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    const res = await this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    if (res?.data) {
+      this.server.emit('location:updated', res.data);
+    }
+    return res;
   }
 
   @SubscribeMessage('track-live-location')
@@ -99,7 +104,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       }
     }
 
-    return this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    const res = await this.liveLocationService.trackLiveLocation(authUser, parsedDto);
+    if (res?.data) {
+      this.server.emit('location:updated', res.data);
+    }
+    return res;
   }
 
   private async authenticateSocket(client: Socket): Promise<AuthUser> {
@@ -138,6 +147,11 @@ export class LiveLocationGateway implements OnGatewayConnection {
       authorization.startsWith('Bearer ')
     ) {
       return authorization.slice(7).trim();
+    }
+
+    const queryToken = client.handshake.query?.token;
+    if (typeof queryToken === 'string' && queryToken.trim()) {
+      return queryToken.replace(/^Bearer\s+/i, '').trim();
     }
 
     return null;

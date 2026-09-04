@@ -27,6 +27,7 @@ export class FitterService {
 
         const fitterFilter = {
             assignedFitter,
+            isDeleted: { $ne: true },
         };
 
         const now = new Date();
@@ -342,7 +343,8 @@ export class FitterService {
                 data: job,
             };
         } catch (error) {
-            console.log(error)
+            console.log(error);
+            throw error;
         }
 
     }

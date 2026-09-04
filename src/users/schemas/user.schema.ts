@@ -76,6 +76,12 @@ export class User {
   /** Hashed refresh token — never returned in queries by default. */
   @Prop({ select: false })
   refreshToken?: string;
+
+  @Prop({ type: Boolean, default: false, index: true })
+  isDeleted?: boolean;
+
+  @Prop({ type: Date })
+  lastSeenStaffRequestsAt?: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;

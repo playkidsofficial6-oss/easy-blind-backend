@@ -9,7 +9,6 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtAuthenticatedUser } from '../auth/interfaces/jwt-user.interface';
 import { UpdateLiveLocationDto } from './dto/update-live-location.dto';
-import { LiveLocationGateway } from './live-location.gateway';
 import { LiveLocationService } from './live-location.service';
 
 interface AuthenticatedRequest extends Request {
@@ -23,7 +22,6 @@ interface AuthenticatedRequest extends Request {
 export class LiveLocationController {
   constructor(
     private readonly liveLocationService: LiveLocationService,
-    private readonly liveLocationGateway: LiveLocationGateway,
   ) {}
 
   @Post('update')
@@ -35,14 +33,10 @@ export class LiveLocationController {
     @Req() request: AuthenticatedRequest,
     @Body() updateLiveLocationDto: UpdateLiveLocationDto,
   ) {
-    const response = await this.liveLocationService.updateLocation(
+    return this.liveLocationService.updateLocation(
       request.user,
       updateLiveLocationDto,
     );
-
-    this.liveLocationGateway.broadcastLocationUpdated(response.data);
-
-    return response;
   }
 
   @Get('all')

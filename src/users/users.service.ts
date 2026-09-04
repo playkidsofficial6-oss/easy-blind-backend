@@ -30,6 +30,7 @@ export interface UserResponse {
   phoneNumber?: string;
   location?: UserLocation;
   checkedIn?: boolean;
+  isDeleted?: boolean;
   activeTaskId?: string;
   activeTaskStatus?: string;
   currentTaskAssignedAt?: Date;
@@ -103,13 +104,16 @@ export class UsersService {
   }
 
   async findAll(): Promise<UserResponse[]> {
-    const users = await this.userModel.find().sort({ createdAt: -1 }).exec();
+    const users = await this.userModel
+      .find({ isDeleted: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .exec();
     return users.map((user) => this.toResponse(user));
   }
 
   async findFitters(): Promise<any[]> {
     const users = await this.userModel
-      .find({ role: UserRole.Fitter })
+      .find({ role: UserRole.Fitter, isDeleted: { $ne: true } })
       .sort({ createdAt: -1 })
       .exec();
 
@@ -131,7 +135,9 @@ export class UsersService {
   }
 
   async findById(id: string): Promise<UserResponse> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.userModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .exec();
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -142,7 +148,10 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<UserResponse | null> {
     const user = await this.userModel
-      .findOne({ email: email.toLowerCase().trim() })
+      .findOne({
+        email: email.toLowerCase().trim(),
+        isDeleted: { $ne: true },
+      })
       .exec();
     return user ? this.toResponse(user) : null;
   }
@@ -151,7 +160,10 @@ export class UsersService {
     email: string,
   ): Promise<UserWithPassword | null> {
     const user = await this.userModel
-      .findOne({ email: email.toLowerCase().trim() })
+      .findOne({
+        email: email.toLowerCase().trim(),
+        isDeleted: { $ne: true },
+      })
       .select('+passwordHash')
       .exec();
 
@@ -187,8 +199,9 @@ export class UsersService {
       updatePayload.email = normalizedEmail;
     }
 
-    if (updateUserDto.phoneNumber !== undefined) {
-      updatePayload.phoneNumber = updateUserDto.phoneNumber.trim();
+    const rawPhone = updateUserDto.phoneNumber;
+    if (rawPhone !== undefined) {
+      updatePayload.phoneNumber = String(rawPhone).trim();
     }
 
     if (updateUserDto.password !== undefined) {
@@ -212,8 +225,8 @@ export class UsersService {
 
     try {
       const updatedUser = await this.userModel
-        .findByIdAndUpdate(id, updatePayload, {
-          new: true,
+        .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updatePayload, {
+          returnDocument: 'after',
           runValidators: true,
         })
         .exec();
@@ -239,7 +252,7 @@ export class UsersService {
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
       { $set: { checkedIn: true } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!user) {
       throw new NotFoundException('User not found');
@@ -258,7 +271,7 @@ export class UsersService {
     const user = await this.userModel.findByIdAndUpdate(
       idToUpdate,
       { $set: { checkedIn: false } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!user) {
       throw new NotFoundException('User not found');
@@ -269,9 +282,33 @@ export class UsersService {
     };
   }
 
+  async softDelete(id: string): Promise<{ message: string }> {
+    const user = await this.userModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.userModel
+      .findByIdAndUpdate(
+        id,
+        {
+          $set: { isDeleted: true, checkedIn: false },
+          $unset: { refreshToken: 1 },
+        },
+        { returnDocument: 'after' },
+      )
+      .exec();
+
+    return { message: 'User deleted successfully' };
+  }
+
   private toResponse(user: UserDocument): UserResponse {
     const plainUser = user.toObject() as UserPlainObject & {
       checkedIn?: boolean;
+      isDeleted?: boolean;
     };
 
     return {
@@ -282,6 +319,7 @@ export class UsersService {
       phoneNumber: plainUser.phoneNumber,
       location: plainUser.location,
       checkedIn: plainUser.checkedIn ?? true,
+      isDeleted: plainUser.isDeleted ?? false,
       createdAt: plainUser.createdAt,
       updatedAt: plainUser.updatedAt,
     };
