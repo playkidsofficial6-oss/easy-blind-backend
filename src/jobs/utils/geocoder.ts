@@ -61,6 +61,8 @@ function getFallbackCoordinates(address: string): [number, number] {
     mirdif: [55.4134, 25.2132],
     'abu dhabi': [54.3773, 24.4539],
     sharjah: [55.4121, 25.3573],
+    'england cluster': [55.4013, 25.1744],
+    'international city': [55.4013, 25.1744],
     dubai: [55.2708, 25.2048],
   };
 
