@@ -46,5 +46,9 @@ export function validateEnvironment(env: Environment) {
     ZEPTOMAIL_TOKEN: env.ZEPTOMAIL_TOKEN ?? '',
     ZEPTOMAIL_FROM_ADDRESS: env.ZEPTOMAIL_FROM_ADDRESS ?? 'noreply@measurepro.co',
     ZEPTOMAIL_FROM_NAME: env.ZEPTOMAIL_FROM_NAME ?? 'noreply',
+    FIREBASE_SERVICE_ACCOUNT: env.FIREBASE_SERVICE_ACCOUNT ?? '',
+    FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID ?? '',
+    FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL ?? '',
+    FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY ?? '',
   };
 }

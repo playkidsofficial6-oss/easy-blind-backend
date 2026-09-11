@@ -47,6 +47,7 @@ export class LiveLocationGateway implements OnGatewayConnection {
     try {
       const authUser = await this.authenticateSocket(client);
       client.data.user = authUser;
+      client.join(`user:${authUser.userId.toString()}`);
       this.logger.log(`Flutter LiveLocation socket connected: ${authUser.userId}`);
     } catch (error) {
       this.logger.warn(
@@ -57,6 +58,13 @@ export class LiveLocationGateway implements OnGatewayConnection {
       client.emit('error', { message: 'Unauthorized live-location socket' });
       client.disconnect(true);
     }
+  }
+
+  sendToUser(userId: string, event: string, payload: any): boolean {
+    const userRoom = `user:${userId}`;
+    if (!this.server) return false;
+    this.server.to(userRoom).emit(event, payload);
+    return true;
   }
 
   @SubscribeMessage('trackLiveLocation')

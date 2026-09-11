@@ -6,6 +6,8 @@ import { Job, JobSchema } from './schemas/job.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { LiveLocationModule } from '../live-location/live-location.module';
 
+import { NotificationsModule } from '../notifications/notifications.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -13,6 +15,7 @@ import { LiveLocationModule } from '../live-location/live-location.module';
       { name: User.name, schema: UserSchema },
     ]),
     forwardRef(() => LiveLocationModule),
+    NotificationsModule,
   ],
   controllers: [JobsController],
   providers: [JobsService],

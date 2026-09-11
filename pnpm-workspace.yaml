@@ -1,8 +1,12 @@
 allowBuilds:
+  '@firebase/util': true
   '@scarf/scarf': true
   bcrypt: true
   mongodb-memory-server: true
+  protobufjs: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - firebase-admin@14.4.0
 onlyBuiltDependencies:
   - '@scarf/scarf'
   - bcrypt

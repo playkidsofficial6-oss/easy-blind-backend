@@ -27,6 +27,7 @@ import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthUser } from '../helpers/AuthUser.type';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { FcmTokenDto } from './dto/fcm-token.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -158,4 +159,30 @@ export class UsersController {
   ) {
     return this.usersService.checkOut(user.userId, body?.userId);
   }
+
+  @Post('fcm-token')
+  @Patch('fcm-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Register/update device FCM token for push notifications' })
+  @ApiOkResponse({ description: 'FCM token registered successfully.' })
+  updateFcmToken(
+    @Request() { user }: { user: AuthUser },
+    @Body() dto: FcmTokenDto,
+  ) {
+    return this.usersService.updateFcmToken(user.userId, dto.token);
+  }
+
+  @Delete('fcm-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove device FCM token on logout' })
+  @ApiOkResponse({ description: 'FCM token removed successfully.' })
+  removeFcmToken(
+    @Request() { user }: { user: AuthUser },
+    @Body() dto: FcmTokenDto,
+  ) {
+    return this.usersService.removeFcmToken(user.userId, dto.token);
+  }
 }
+

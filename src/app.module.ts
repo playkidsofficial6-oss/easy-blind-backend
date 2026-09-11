@@ -9,6 +9,7 @@ import { MeasurementsModule } from './measurements/measurements.module';
 import { validateEnvironment } from './config/env.validation';
 import { FlutterModule } from './flutter/flutter.module';
 import { MailModule } from './mail/mail.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MailModule } from './mail/mail.module';
     AuthModule,
     FlutterModule,
     MailModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

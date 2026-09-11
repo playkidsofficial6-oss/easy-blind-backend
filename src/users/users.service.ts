@@ -400,4 +400,39 @@ export class UsersService {
       data: null,
     };
   }
+
+  async updateFcmToken(
+    userId: string | mongoose.Types.ObjectId,
+    token: string,
+  ) {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('FCM token must be a non-empty string');
+    }
+    const cleanToken = token.trim();
+    if (!cleanToken) {
+      throw new BadRequestException('FCM token must be a non-empty string');
+    }
+    await this.userModel.findByIdAndUpdate(userId, {
+      $addToSet: { fcmTokens: cleanToken },
+    });
+    return {
+      message: 'FCM token registered successfully',
+    };
+  }
+
+  async removeFcmToken(
+    userId: string | mongoose.Types.ObjectId,
+    token: string,
+  ) {
+    if (!token || typeof token !== 'string') {
+      return { message: 'FCM token removed' };
+    }
+    await this.userModel.findByIdAndUpdate(userId, {
+      $pull: { fcmTokens: token.trim() },
+    });
+    return {
+      message: 'FCM token removed successfully',
+    };
+  }
 }
+

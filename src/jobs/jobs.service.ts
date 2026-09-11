@@ -17,6 +17,7 @@ import { Job, JobDocument, JobStatus } from './schemas/job.schema';
 import { geocodeAddress } from './utils/geocoder';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
 import { LiveLocationService } from '../live-location/live-location.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const JOB_ID_PREFIX = 'JOB';
 const JOB_ID_SEQUENCE_WIDTH = 4;
@@ -29,6 +30,7 @@ export class JobsService implements OnModuleInit {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @Inject(forwardRef(() => LiveLocationService))
     private readonly liveLocationService: LiveLocationService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -383,11 +385,84 @@ export class JobsService implements OnModuleInit {
       .exec();
   }
 
+  private async dispatchJobAssignmentNotifications(
+    job: JobDocument,
+    options?: {
+      oldSalesmanId?: string;
+      oldFitterId?: string;
+      notifySalesman?: boolean;
+      notifyFitter?: boolean;
+    },
+  ) {
+    const jobMongoId = job._id.toString();
+    const jobId = job.jobId || jobMongoId;
+    const customerName =
+      (job as any).customerName ||
+      `${job.firstName || ''} ${job.lastName || ''}`.trim() ||
+      'Customer';
+
+    // Check salesman assignment
+    const currentSalesmanId = job.assignedSalesman
+      ? (typeof job.assignedSalesman === 'object' && (job.assignedSalesman as any)._id
+          ? (job.assignedSalesman as any)._id.toString()
+          : job.assignedSalesman.toString())
+      : undefined;
+
+    const shouldNotifySalesman =
+      options?.notifySalesman ??
+      (Boolean(currentSalesmanId) && currentSalesmanId !== options?.oldSalesmanId);
+
+    if (shouldNotifySalesman && currentSalesmanId) {
+      this.notificationsService
+        .notifyJobAssigned({
+          targetUserId: currentSalesmanId,
+          jobId,
+          jobMongoId,
+          customerName,
+          address: job.address,
+          role: 'Salesman',
+          scheduledAt: job.scheduledAt,
+        })
+        .catch((err) =>
+          console.error('[Notification] Failed to notify salesman:', err),
+        );
+    }
+
+    // Check fitter assignment
+    const currentFitterId = job.assignedFitter
+      ? (typeof job.assignedFitter === 'object' && (job.assignedFitter as any)._id
+          ? (job.assignedFitter as any)._id.toString()
+          : job.assignedFitter.toString())
+      : undefined;
+
+    const shouldNotifyFitter =
+      options?.notifyFitter ??
+      (Boolean(currentFitterId) && currentFitterId !== options?.oldFitterId);
+
+    if (shouldNotifyFitter && currentFitterId) {
+      this.notificationsService
+        .notifyJobAssigned({
+          targetUserId: currentFitterId,
+          jobId,
+          jobMongoId,
+          customerName,
+          address: job.address,
+          role: 'Fitter',
+          scheduledAt: job.scheduledAt,
+        })
+        .catch((err) =>
+          console.error('[Notification] Failed to notify fitter:', err),
+        );
+    }
+  }
+
   private async notifySalesmanJobAssignment(
     job: JobDocument,
     oldSalesmanUserId?: string,
   ) {
-    // WebSockets removed from salesman/manager dashboard
+    await this.dispatchJobAssignmentNotifications(job, {
+      oldSalesmanId: oldSalesmanUserId,
+    });
   }
 
   async create(
@@ -455,9 +530,12 @@ export class JobsService implements OnModuleInit {
     }
 
     const savedJob = await createdJob.save();
-    this.notifySalesmanJobAssignment(savedJob).catch((err) => {
+    this.dispatchJobAssignmentNotifications(savedJob, {
+      notifySalesman: Boolean(assignedSalesman),
+      notifyFitter: Boolean(assignedFitter),
+    }).catch((err) => {
       console.error(
-        '[Socket] Failed to run notifySalesmanJobAssignment async:',
+        '[Notification] Failed to run dispatchJobAssignmentNotifications async:',
         err,
       );
     });
@@ -614,12 +692,21 @@ export class JobsService implements OnModuleInit {
   async update(id: string, updateJobDto: UpdateJobDto): Promise<JobDocument> {
     const currentJob = await this.findByMongoIdOrJobId(id);
     let oldSalesmanUserId: string | undefined;
+    let oldFitterUserId: string | undefined;
     if (currentJob && currentJob.assignedSalesman) {
       const oldUser = await this.findUserByAssignment(
         currentJob.assignedSalesman,
       );
       if (oldUser) {
         oldSalesmanUserId = oldUser._id.toString();
+      }
+    }
+    if (currentJob && currentJob.assignedFitter) {
+      const oldFitter = await this.findUserByAssignment(
+        currentJob.assignedFitter,
+      );
+      if (oldFitter) {
+        oldFitterUserId = oldFitter._id.toString();
       }
     }
 
@@ -711,14 +798,15 @@ export class JobsService implements OnModuleInit {
       throw new NotFoundException(`Job with id ${id} was not found`);
     }
 
-    this.notifySalesmanJobAssignment(updatedJob, oldSalesmanUserId).catch(
-      (err) => {
-        console.error(
-          '[Socket] Failed to run notifySalesmanJobAssignment async on update:',
-          err,
-        );
-      },
-    );
+    this.dispatchJobAssignmentNotifications(updatedJob, {
+      oldSalesmanId: oldSalesmanUserId,
+      oldFitterId: oldFitterUserId,
+    }).catch((err) => {
+      console.error(
+        '[Notification] Failed to run dispatchJobAssignmentNotifications async on update:',
+        err,
+      );
+    });
 
     return (await this.findOne(updatedJob._id.toString())) as JobDocument;
   }
@@ -789,7 +877,17 @@ export class JobsService implements OnModuleInit {
       )
       .exec();
 
-    return (await this.findByMongoIdOrJobId(id)) as JobDocument;
+    const updatedJob = (await this.findByMongoIdOrJobId(id)) as JobDocument;
+    this.dispatchJobAssignmentNotifications(updatedJob, {
+      notifyFitter: true,
+      notifySalesman: false,
+    }).catch((err) => {
+      console.error(
+        '[Notification] Failed to run dispatchJobAssignmentNotifications async on assignFitter:',
+        err,
+      );
+    });
+    return updatedJob;
   }
 
   async startFitterTravel(

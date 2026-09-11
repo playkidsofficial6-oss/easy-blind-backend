@@ -80,6 +80,9 @@ export class User {
   @Prop({ type: Boolean, default: false, index: true })
   isDeleted?: boolean;
 
+  @Prop({ type: [String], default: [] })
+  fcmTokens?: string[];
+
   @Prop({ type: Date })
   lastSeenStaffRequestsAt?: Date;
 }
